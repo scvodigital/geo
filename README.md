@@ -21,9 +21,15 @@ The data will sit in a single Elasticsearch index with the following mapping:
 | --- | --- | --- | --- | --- | --- |
 | Local authority districts | Office for National Statistics | [Local Authority Districts (May 2018) UK BUC](http://geoportal.statistics.gov.uk/datasets/local-authority-districts-may-2018-uk-buc) | 2018-10-02 | [GeoJSON](https://opendata.arcgis.com/datasets/593018bf59ab4699b66355bd33cd186d_4.geojson) | `local-authority-districts` |
 | Electoral Wards | Office for National Statistics | [Wards (December 2017) Generalised Clipped Boundaries in Great Britain](http://geoportal.statistics.gov.uk/datasets/wards-december-2017-generalised-clipped-boundaries-in-great-britain) | 2018-10-02 | [GeoJSON](https://opendata.arcgis.com/datasets/07194e4507ae491488471c84b23a90f2_2.geojson) | `electoral-wards` |
+| NUTS Level 2 | Office for National Statistics | [NUTS Level 2 (January 2018) GEneralised Clipped Boundaries in the United Kingdom](http://geoportal.statistics.gov.uk/datasets/nuts-level-2-january-2018-generalised-clipped-boundaries-in-the-united-kingdom) | 2018-10-02 | [GeoJSON](https://opendata.arcgis.com/datasets/48b6b85bb7ea43699ee85f4ecd12fd36_2.geojson) | nuts-level-2 |
+
+All data imports should be run in order when run on an empty index.
 
 ### Local Authority Districts
 [Info about import and transform process here]
 
 ### Electoral Wards
+[Info about import and transform process here]
+
+### NUTS Level 2
 [Info about import and transform process here]
