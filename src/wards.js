@@ -6,6 +6,8 @@ const { Importer } = require('./importer');
   const wards = require('../data/electoral-ward.json');
   const documents = wards.features.map(feature => {
     const ward = feature.properties;
+    const geometry = feature.geometry;
+    console.log(geometry);
     const document = {
       Id: ward.wd17cd,
       place: ward.wd17nmw && ward.wd17nmw !== ' ' ? [ward.wd17nm, ward.wd17nmw] : ward.wd17nm,
@@ -14,7 +16,7 @@ const { Importer } = require('./importer');
         lat: ward.lat,
         lon: ward.long
       },
-      shape: ward.geometry
+      shape: geometry
     };
     return document; 
   });
