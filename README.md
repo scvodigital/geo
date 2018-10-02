@@ -11,7 +11,7 @@ The data will sit in a single Elasticsearch index with the following mapping:
 | Property | Type | Description | Examples |
 | --- | --- | --- | --- |
 | Id | n/a | The Elasticsearch Id will take on the Ids given in the datasource or the name of the place if it is unique (a postcode) | `E09000032`, `EH3 6BB` |
-| name | `keyword` | The full name  used to describe or find the object | `Wandsworth`, `EH3 6BB` |
+| place | `keyword` | The full name  used to describe or find the object | `Wandsworth`, `EH3 6BB` |
 | textbag | `text` | Used for partial matches | n/a |
 | point | `geo_point` | The latitude and longitude of the place | `{ lat: 51.45238876, lon: -0.20021001 }`, `{ lat: 55.959724, lon: -3.190456 }` |
 | shape | `geo_shape` | If there is shape data provided this will be stored here | n/a |
@@ -23,10 +23,11 @@ The data will sit in a single Elasticsearch index with the following mapping:
 | Local authority districts | Office for National Statistics | [Local Authority Districts (May 2018) UK BUC](http://geoportal.statistics.gov.uk/datasets/local-authority-districts-may-2018-uk-buc) | 2018-10-02 | [GeoJSON](https://opendata.arcgis.com/datasets/593018bf59ab4699b66355bd33cd186d_4.geojson) | `local-authority-district` |
 | Electoral Wards | Office for National Statistics | [Wards (December 2017) Generalised Clipped Boundaries in Great Britain](http://geoportal.statistics.gov.uk/datasets/wards-december-2017-generalised-clipped-boundaries-in-great-britain) | 2018-10-02 | [GeoJSON](https://opendata.arcgis.com/datasets/07194e4507ae491488471c84b23a90f2_2.geojson) | `electoral-ward` |
 | NUTS Level 2 | Office for National Statistics | [NUTS Level 2 (January 2018) GEneralised Clipped Boundaries in the United Kingdom](http://geoportal.statistics.gov.uk/datasets/nuts-level-2-january-2018-generalised-clipped-boundaries-in-the-united-kingdom) | 2018-10-02 | [GeoJSON](https://opendata.arcgis.com/datasets/48b6b85bb7ea43699ee85f4ecd12fd36_2.geojson) | `nuts-level-2` |
-| Postcodes | Office for National Statistics | [ONS Postcode Directory (Latest) Centroids](http://geoportal.statistics.gov.uk/datasets/ons-postcode-directory-latest-centroids) | 2018-10-02 | [GeoJSON](https://opendata.arcgis.com/datasets/75edec484c5d49bcadd4893c0ebca0ff_0.geojson) | `postcode` |
+| Postcodes | Office for National Statistics | [ONS Postcode Directory (Latest) Centroids](http://geoportal.statistics.gov.uk/datasets/ons-postcode-directory-latest-centroids) | 2018-10-02 | [CSV](https://opendata.arcgis.com/datasets/75edec484c5d49bcadd4893c0ebca0ff_0.csv?session=undefined&outSR=%7B%22wkid%22%3A27700%2C%22latestWkid%22%3A27700%7D) | `postcode` |
 
 * All data imports should be run in order when run on an empty index.
-* After you download each data file, they must be moved to the `./data` directory and renamed to match their Elasticsearch type name and keep it's file extension.
+* After you download each data file, they must be moved to the `./data` directory and renamed to match their Elasticsearch type name.
+* `.geojson` files must have their file extensions changed to `.json`.
 
 ### Local Authority Districts
 [Info about import and transform process here]

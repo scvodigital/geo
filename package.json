@@ -15,5 +15,9 @@
   "bugs": {
     "url": "https://github.com/scvodigital/geo/issues"
   },
-  "homepage": "https://github.com/scvodigital/geo#readme"
+  "homepage": "https://github.com/scvodigital/geo#readme",
+  "dependencies": {
+    "elasticsearch": "^15.1.1",
+    "papaparse": "^4.6.0"
+  }
 }
