@@ -17,8 +17,13 @@ The data will sit in a single Elasticsearch index with the following mapping:
 
 ## Data sources
 
-| Location type | Source | Name | Last imported | Data |
+| Location type | Source | Name | Latest | Data | ES Type |
 | --- | --- | --- | --- | --- |
-| Local authority districts | Office for National Statistics | [Local Authority Districts (May 2018) UK BUC](http://geoportal.statistics.gov.uk/datasets/local-authority-districts-may-2018-uk-buc?page=33) | 2018-10-02 | [GeoJSON](https://opendata.arcgis.com/datasets/593018bf59ab4699b66355bd33cd186d_4.geojson) |
+| Local authority districts | Office for National Statistics | [Local Authority Districts (May 2018) UK BUC](http://geoportal.statistics.gov.uk/datasets/local-authority-districts-may-2018-uk-buc) | 2018-10-02 | [GeoJSON](https://opendata.arcgis.com/datasets/593018bf59ab4699b66355bd33cd186d_4.geojson) | `local-authority-districts` |
+| Electoral Wards | Office for National Statistics | [Wards (December 2017) Generalised Clipped Boundaries in Great Britain](http://geoportal.statistics.gov.uk/datasets/wards-december-2017-generalised-clipped-boundaries-in-great-britain) | 2018-10-02 | [GeoJSON](https://opendata.arcgis.com/datasets/07194e4507ae491488471c84b23a90f2_2.geojson) |
 
 ### Local Authority Districts
+[Info about import and transform process here]
+
+### Electoral Wards
+[Info about import and transform process here]
