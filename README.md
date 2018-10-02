@@ -26,7 +26,7 @@ The data will sit in a single Elasticsearch index with the following mapping:
 | Postcodes | Office for National Statistics | [ONS Postcode Directory (Latest) Centroids](http://geoportal.statistics.gov.uk/datasets/ons-postcode-directory-latest-centroids) | 2018-10-02 | [GeoJSON](https://opendata.arcgis.com/datasets/75edec484c5d49bcadd4893c0ebca0ff_0.geojson) | `postcode` |
 
 * All data imports should be run in order when run on an empty index.
-* After you download each data file, they must be moved to the `./data` directory and renamed to match their Elasticsearch type name
+* After you download each data file, they must be moved to the `./data` directory and renamed to match their Elasticsearch type name and keep it's file extension.
 
 ### Local Authority Districts
 [Info about import and transform process here]
