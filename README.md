@@ -25,18 +25,3 @@ The data will sit in a single Elasticsearch index with the following mapping:
 | NUTS Level 2 | Office for National Statistics | [NUTS Level 2 (January 2018) GEneralised Clipped Boundaries in the United Kingdom](http://geoportal.statistics.gov.uk/datasets/nuts-level-2-january-2018-generalised-clipped-boundaries-in-the-united-kingdom) | 2018-10-02 | [GeoJSON](https://opendata.arcgis.com/datasets/48b6b85bb7ea43699ee85f4ecd12fd36_2.geojson) | `nuts-level-2` |
 | Postcodes | Office for National Statistics | [ONS Postcode Directory (Latest) Centroids](http://geoportal.statistics.gov.uk/datasets/ons-postcode-directory-latest-centroids) | 2018-10-02 | [CSV](https://opendata.arcgis.com/datasets/75edec484c5d49bcadd4893c0ebca0ff_0.csv?session=undefined&outSR=%7B%22wkid%22%3A27700%2C%22latestWkid%22%3A27700%7D) | `postcode` |
 
-* All data imports should be run in order when run on an empty index.
-* After you download each data file, they must be moved to the `./data` directory and renamed to match their Elasticsearch type name.
-* `.geojson` files must have their file extensions changed to `.json`.
-
-### Local Authority Districts
-[Info about import and transform process here]
-
-### Electoral Wards
-[Info about import and transform process here]
-
-### NUTS Level 2
-[Info about import and transform process here]
-
-### Postcodes
-[Info about import and transform process here]
