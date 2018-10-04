@@ -1,14 +1,24 @@
+const MultiProgress = require('multi-progress');
 const elasticsearch = require('elasticsearch');
+
 class Indexer {
-  constructor(config) {
+  constructor(config, multi) {
     this.config = config;
     this.host = config.host;
     this.index = config.index;
     this.pageSize = config.pageSize;
-    this.tickerInterval = config.tickerInterval;
     this.fresh = config.fresh || false;
     this.queue = [];
+    this.indexing = false;
     this.ticker = null;
+    this.progressBar = multi.newBar('    Index queue: [:bar] :percent | :current/:total', {
+      complete: '=',
+      incomplete: ' ',
+      width: 50,
+      total: 0
+    });
+    this.total = 0;
+    this.indexed = 0;
   }
 
   async setup() {
@@ -27,7 +37,7 @@ class Indexer {
       console.log('Index', !exists ? 'does not exist' : 'already exists');
     } catch(err) {
       console.error('Failed to check if index exists', existsParams, err);
-      process.exist();
+      process.exit();
     }
    
     if (exists && this.fresh) {
@@ -61,48 +71,59 @@ class Indexer {
     console.log('Indexer ready');
   }
 
+  startIndexer() {
+    if (this.ticker) return;
+    console.log('Starting indexer');
+    this.ticker = setInterval(async () => {
+      await this.tick();
+    }, 0);
+  }
+
   async tick() {
-    const length = this.queue.length;
-    if (length > 0) {
-      const timeRemaining = Math.round((((length / this.pageSize) * this.tickerInterval) / 1000) * 100) / 100;
-      console.log('INDEXER TICK -> Queue size:', length, '| Approximately', timeRemaining, 'seconds left'); 
-      const page = this.queue.splice(0, this.pageSize);
-      if (page.length > 0) {
-        try {
-          await this.indexDocuments(page);
-        } catch(err) {
-          console.error('Failed to index documents', err);
-        }
-      }
-    } else {
-      console.log('Nothing left in queue, turning ticker off until there is');
-      clearInterval(this.ticker);
-      this.ticker = null;
+    if (this.indexing || this.queue.length === 0) return;
+    let currentPageSize = 0;
+    const documents = [];
+    while (this.queue.length > 0 && currentPageSize < this.pageSize) {
+      const document = this.queue.shift();
+      const documentSize = JSON.stringify(document).length;
+      currentPageSize += documentSize;
+      documents.push(document);
+    }
+    //console.log('Page document count:', documents.length, '| Page size', currentPageSize, '| Documents still in queue', this.queue.length);
+    if (documents.length > 0) {
+      await this.indexDocuments(documents);
     }
   }
 
   push(documents) {
     this.queue.push(...documents);
-    if (!this.ticker) {
-      this.ticker = setInterval(async () => {
-        this.tick();
-      }, this.tickerInterval);
-    }
+    this.total += documents.length;
+    this.progressBar.total = this.total;
   }
 
   async indexDocuments(documents) {
+    this.indexing = true;
     const bulkParams = { body: [] };
-    for (const document of documents) {
-      bulkParams.body.push(document.head);
-      bulkParams.body.push(document.body);      
+
+    try {
+      for (const document of documents) {
+        bulkParams.body.push(document.head);
+        bulkParams.body.push(document.body);      
+      }
+    } catch (err) {
+      console.error('Problem preparing bulk index body', err);
+      return;
     }
 
     try {
       const indexResponse = await this.client.bulk(bulkParams);
-      console.log('Bulk index finished on', documents.length, 'documents. Total errors:', indexResponse.errors && indexResponse.errors.length || 'none');
+      //console.log('Bulk index finished on', documents.length, 'documents. Errors:', indexResponse.errors && indexResponse.errors.length || '0');
+      this.indexed += documents.length;
+      this.progressBar.tick(documents.length);
+      this.indexing = false;
     } catch(err) {
       console.log('Index failure:', JSON.stringify(documents, null, 4));
-      throw err;
+      this.indexing = false;
     }
   }
 

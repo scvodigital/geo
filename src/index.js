@@ -3,19 +3,31 @@ const { StringStream } = require('scramjet');
 const r = require('request');
 const rp = require('request-promise-native');
 
+const MultiProgress = require('multi-progress');
+const multi = new MultiProgress(process.stderr);
+
 const CONFIG = require('./config');
 const SECRETS = require('../secrets');
 const { Indexer } = require('./indexer');
 
 const fresh = process.argv.length >= 3 && process.argv[2] === 'fresh';
 
+const masterProgressBar = multi.newBar('    Pre-postcode: [:bar] :percent | :current/:total', {
+  complete: '=',
+  incomplete: ' ',
+  width: 50,
+  total: 8
+});
+function incrementMasterProgress(nextTask) {
+  masterProgressBar.tick();
+}
+
 const indexer = new Indexer({
   host: SECRETS.eshost,
   index: CONFIG.index,
   pageSize: CONFIG.indexPageSize,
-  tickerInterval: CONFIG.indexTickerInterval,
   fresh: fresh
-});
+}, multi);
 
 const maps = {
   districts: {},
@@ -24,7 +36,7 @@ const maps = {
 };
 
 async function processDistricts() {
-  console.log('Downloading Districts data from', CONFIG.districtsUrl);
+  //console.log('Downloading Districts data from', CONFIG.districtsUrl);
   let districts;
   try {
     districts = await rp({
@@ -36,7 +48,7 @@ async function processDistricts() {
     console.error('Failed to download Districts data', err);
     process.exit();
   }
-  console.log('Districts data downloaded. Processing...');
+  incrementMasterProgress('Districts data downloaded. Processing...');
   const documents = districts.features.map(feature => {
     try {
       const district = feature.properties;
@@ -50,11 +62,11 @@ async function processDistricts() {
     }
   });
   indexer.push(documents);
-  console.log('Districts processed');
+  incrementMasterProgress('Districts processed');
 }
 
 async function processWards() {
-  console.log('Downloading Wards data from', CONFIG.wardsUrl);
+  //console.log('Downloading Wards data from', CONFIG.wardsUrl);
   let wards;
   try {
     wards = await rp({
@@ -66,7 +78,7 @@ async function processWards() {
     console.error('Failed to download Wards data', err);
     process.exit();
   }
-  console.log('Wards data downloaded. Processing...');
+  incrementMasterProgress('Wards data downloaded. Processing...');
   const documents = wards.features.map(feature => {
     try {
       const ward = feature.properties;
@@ -80,11 +92,11 @@ async function processWards() {
     }
   });
   indexer.push(documents);
-  console.log('Wards processed');
+  incrementMasterProgress('Wards processed');
 }
 
 async function processNutsLookup() {
-  console.log('Downloading NUTS Lookup data from', CONFIG.nutsLookupUrl);
+  //console.log('Downloading NUTS Lookup data from', CONFIG.nutsLookupUrl);
   let nutsLookup;
   try {
     nutsLookup = await rp({
@@ -96,7 +108,7 @@ async function processNutsLookup() {
     console.error('Failed to download NUTS Lookup data', err);
     process.exit();
   }
-  console.log('NUTS Lookup data downloaded. Processing...');
+  incrementMasterProgress('NUTS Lookup data downloaded. Processing...');
   for (const feature of nutsLookup.features) {
     try {
       maps.nuts[feature.properties.LAD16CD] = feature.properties.NUTS218NM;
@@ -105,11 +117,11 @@ async function processNutsLookup() {
       process.exit();
     }
   } 
-  console.log('NUTS Lookup processed');
+  incrementMasterProgress('NUTS Lookup processed');
 }
 
 async function processNuts() {
-  console.log('Downloading NUTS Level 2 data from', CONFIG.nutsUrl);
+  //console.log('Downloading NUTS Level 2 data from', CONFIG.nutsUrl);
   let nuts;
   try {
     nuts = await rp({
@@ -121,7 +133,7 @@ async function processNuts() {
     console.error('Failed to download NUTS Level 2 data', err);
     process.exit();
   }
-  console.log('NUTS level 2 data downloaded. Processing...');
+  incrementMasterProgress('NUTS level 2 data downloaded. Processing...');
   const documents = nuts.features.map(feature => {
     try {
       const nuts = feature.properties;
@@ -134,15 +146,18 @@ async function processNuts() {
     }
   });
   indexer.push(documents);
-  console.log('NUTS Level 2 data processed');
+  incrementMasterProgress('NUTS Level 2 data processed');
 }
 
 function processPostcodes() {
   return new Promise(async function(resolve, reject) {
-    let progress = 0;
-    let lastChunk = 0;
-    
-    console.log('Setting up readable stream for Postcodes data');
+    const postcodeProgressBar = multi.newBar('    Postcodes processed: [:bar] :percent | :current/:total', {
+      complete: '=',
+      incomplete: ' ',
+      width: 50,
+      total: CONFIG.postcodeCount
+    });
+
     const request = r(CONFIG.postcodesUrl)
       .pipe(new StringStream())
       .CSVParse({
@@ -170,11 +185,7 @@ function processPostcodes() {
           }
         });
         indexer.push(documents);
-        progress = progress + documents.length;
-        if (progress > lastChunk + CONFIG.postcodeProgressChunkSize) {
-          console.log('Postcodes processed so far:', progress);
-          lastChunk = lastChunk + CONFIG.postcodeProgressChunkSize;
-        }
+        postcodeProgressBar.tick(documents.length);
       });
   });
 }
@@ -182,6 +193,7 @@ function processPostcodes() {
 (async function() {
   try {
     await indexer.setup();
+    indexer.startIndexer();
     await processDistricts();
     await processWards();
     await processNutsLookup();
