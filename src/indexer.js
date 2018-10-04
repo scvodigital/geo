@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const MultiProgress = require('multi-progress');
 const elasticsearch = require('elasticsearch');
 
@@ -19,6 +21,8 @@ class Indexer {
     });
     this.total = 0;
     this.indexed = 0;
+    this.failedDocuments = [];
+    this.failedFilePath = path.join(__dirname, 'data/failed-' + +(new Date()) + '.json');
   }
 
   async setup() {
@@ -122,7 +126,9 @@ class Indexer {
       this.progressBar.tick(documents.length);
       this.indexing = false;
     } catch(err) {
-      console.log('Index failure:', JSON.stringify(documents, null, 4));
+      this.failedDocuments.push(...documents);
+      const failedDocumentsJson = JSON.stringify(this.failedDocuments, null, 4);
+      fs.writeFileSync(this.failedFilePath, this.failedDocumentsJson);
       this.indexing = false;
     }
   }

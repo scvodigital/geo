@@ -175,8 +175,8 @@ function processPostcodes() {
             if (maps.wards.hasOwnProperty(postcode.osward)) {
               document.body.ward = maps.wards[postcode.osward];
             }
-            if (maps.nuts.hasOwnProperty(postcode.nuts)) {
-              document.body.nuts = maps.nuts[postcode.nuts];
+            if (maps.nuts.hasOwnProperty(postcode.oslaua)) {
+              document.body.nuts = maps.nuts[postcode.oslaua];
             }
             return document;
           } catch(err) {
