@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const MultiProgress = require('multi-progress');
 const elasticsearch = require('elasticsearch');
+const dateFns = require('date-fns');
 
 class Indexer {
   constructor(config, multi) {
@@ -10,6 +11,7 @@ class Indexer {
     this.index = config.index;
     this.pageSize = config.pageSize;
     this.fresh = config.fresh || false;
+    this.cooldown = config.cooldown || 10000;
     this.queue = [];
     this.indexing = false;
     this.ticker = null;
@@ -19,10 +21,14 @@ class Indexer {
       width: 50,
       total: 0
     });
+    this.failedBar = multi.newBar('    So far failed to index :current document(s)', {
+      complete: '=',
+      incomplete: ' ',
+      width: 50,
+      total: 0
+    });
     this.total = 0;
     this.indexed = 0;
-    this.failedDocuments = [];
-    this.failedFilePath = path.join(__dirname, 'data/failed-' + +(new Date()) + '.json');
   }
 
   async setup() {
@@ -71,6 +77,11 @@ class Indexer {
         process.exit();
       }
     }
+
+    const timestamp = dateFns.format(new Date(), 'YYYY-MM-DD-HH-mm-ss');
+    this.failedDirectory = path.join(__dirname, '../data/failed-' + timestamp);
+    console.log('Creating directory for documents that fail to index at', this.failedDirectory);
+    fs.mkdirSync(this.failedDirectory);
 
     console.log('Indexer ready');
   }
@@ -124,11 +135,14 @@ class Indexer {
       //console.log('Bulk index finished on', documents.length, 'documents. Errors:', indexResponse.errors && indexResponse.errors.length || '0');
       this.indexed += documents.length;
       this.progressBar.tick(documents.length);
+
+      if (indexResponse.errors) {
+        await this.recordFailedDocuments(documents, indexResponse);
+      }
+
       this.indexing = false;
     } catch(err) {
-      this.failedDocuments.push(...documents);
-      const failedDocumentsJson = JSON.stringify(this.failedDocuments, null, 4);
-      fs.writeFileSync(this.failedFilePath, this.failedDocumentsJson);
+      await this.recordFailedDocuments(documents, err);
       this.indexing = false;
     }
   }
@@ -164,6 +178,28 @@ class Indexer {
     
     return document;
   } 
+
+  async recordFailedDocuments(documents, reason) {
+    this.failedBar.tick(documents.length);
+
+    const timestamp = dateFns.format(new Date(), 'YYYY-MM-DD-HH-mm-ss-SS');
+    const filename = timestamp + '.json';
+    const failObject = {
+      documents: documents,
+      reason: reason
+    };
+    const failJson = JSON.stringify(failObject, null, 4);
+    fs.writeFileSync(path.join(this.failedDirectory, filename), failJson);
+    await this.sleep(this.cooldown);
+  }
+
+  sleep(ms) {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        resolve();
+      }, ms);
+    });
+  }
 }
 
 module.exports = { Indexer };

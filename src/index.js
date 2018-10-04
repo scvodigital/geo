@@ -26,6 +26,7 @@ const indexer = new Indexer({
   host: SECRETS.eshost,
   index: CONFIG.index,
   pageSize: CONFIG.indexPageSize,
+  cooldown: CONFIG.cooldown,
   fresh: fresh
 }, multi);
 

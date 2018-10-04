@@ -4,6 +4,7 @@ module.exports = {
   postcodeBatchSize: 5,
   postcodeProgressChunkSize: 100000,
   postcodeCount: 2616838,
+  cooldown: 10000,
   districtsUrl: 'https://opendata.arcgis.com/datasets/593018bf59ab4699b66355bd33cd186d_4.geojson',
   wardsUrl: 'https://opendata.arcgis.com/datasets/07194e4507ae491488471c84b23a90f2_3.geojson',
   nutsLookupUrl: 'https://opendata.arcgis.com/datasets/2a2548641a294734ba4fdb689b12d955_0.geojson',
