@@ -15,12 +15,21 @@ class Indexer {
     this.queue = [];
     this.indexing = false;
     this.ticker = null;
+    this.startIndex = config.startIndex;
     this.progressBar = multi.newBar('    Index queue: [:bar] :percent | :current/:total', {
       complete: '=',
       incomplete: ' ',
       width: 50,
       total: 0
     });
+    if (this.startIndex > 0) {
+      this.skipBar = multi.newBar('    Skipping items: [:bar] :percent | :current/:total', {
+        complete: '=',
+        incomplete: ' ',
+        width: 50,
+        total: this.startIndex
+      });
+    }
     this.failedBar = multi.newBar('    So far failed to index :current document(s)', {
       complete: '=',
       incomplete: ' ',
@@ -28,6 +37,7 @@ class Indexer {
       total: 0
     });
     this.total = 0;
+    this.skipped = 0;
     this.indexed = 0;
   }
 
@@ -88,7 +98,7 @@ class Indexer {
 
   startIndexer() {
     if (this.ticker) return;
-    console.log('Starting indexer');
+    console.log('Starting indexer\n\n\n\n\n\n\n');
     this.ticker = setInterval(async () => {
       await this.tick();
     }, 0);
@@ -111,9 +121,17 @@ class Indexer {
   }
 
   push(documents) {
-    this.queue.push(...documents);
-    this.total += documents.length;
-    this.progressBar.total = this.total;
+    if (this.startIndex <= this.skipped + documents.length) {
+      if (this.skipBar && this.skipBar.current < this.startIndex) {
+        this.skipBar.tick(this.startIndex - this.skipBar.current);
+      }
+      this.total += documents.length;
+      this.progressBar.total = this.total;
+      this.queue.push(...documents);
+    } else {
+      this.skipped += documents.length;
+      this.skipBar.tick(documents.length);
+    }
   }
 
   async indexDocuments(documents) {

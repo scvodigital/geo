@@ -2,6 +2,7 @@ const { Readable }  = require('stream');
 const { StringStream } = require('scramjet');
 const r = require('request');
 const rp = require('request-promise-native');
+const dateFns = require('date-fns');
 
 const MultiProgress = require('multi-progress');
 const multi = new MultiProgress(process.stderr);
@@ -10,7 +11,10 @@ const CONFIG = require('./config');
 const SECRETS = require('../secrets');
 const { Indexer } = require('./indexer');
 
-const fresh = process.argv.length >= 3 && process.argv[2] === 'fresh';
+const args = process.argv.splice(2);
+const fresh = args.indexOf('fresh') > -1;
+const skipToPostcodes = args.indexOf('skip-to-postcodes');
+const startIndex = Number(args.filter(arg => Number(arg))[0]) || 0;
 
 const masterProgressBar = multi.newBar('    Pre-postcode: [:bar] :percent | :current/:total', {
   complete: '=',
@@ -27,7 +31,8 @@ const indexer = new Indexer({
   index: CONFIG.index,
   pageSize: CONFIG.indexPageSize,
   cooldown: CONFIG.cooldown,
-  fresh: fresh
+  fresh: fresh,
+  startIndex: startIndex
 }, multi);
 
 const maps = {
@@ -62,7 +67,9 @@ async function processDistricts() {
       process.exit();
     }
   });
-  indexer.push(documents);
+  if (!skipToPostcodes) {
+    indexer.push(documents);
+  }
   incrementMasterProgress('Districts processed');
 }
 
@@ -92,7 +99,9 @@ async function processWards() {
       process.exit();
     }
   });
-  indexer.push(documents);
+  if (!skipToPostcodes) {
+    indexer.push(documents);
+  }
   incrementMasterProgress('Wards processed');
 }
 
@@ -146,7 +155,9 @@ async function processNuts() {
       process.exit();
     }
   });
-  indexer.push(documents);
+  if (!skipToPostcodes) {
+    indexer.push(documents);
+  }
   incrementMasterProgress('NUTS Level 2 data processed');
 }
 
@@ -193,6 +204,8 @@ function processPostcodes() {
 
 (async function() {
   try {
+    console.log('Job started at:', dateFns.format('YYYY-MM-DD HH:mm:ss')); 
+
     await indexer.setup();
     indexer.startIndexer();
     await processDistricts();
