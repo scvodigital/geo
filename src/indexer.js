@@ -3,34 +3,37 @@ const path = require('path');
 const MultiProgress = require('multi-progress');
 const elasticsearch = require('elasticsearch');
 const dateFns = require('date-fns');
+const s = require('string');
+const deepmerge = require('deepmerge');
 
 class Indexer {
   constructor(config, multi) {
     this.config = config;
     this.host = config.host;
     this.index = config.index;
-    this.pageSize = config.pageSize;
+    this.pageSize = config.pageSize || 10000;
     this.fresh = config.fresh || false;
     this.cooldown = config.cooldown || 10000;
+    this.timeout = config.timeout || '5m';
     this.queue = [];
     this.indexing = false;
     this.ticker = null;
     this.startIndex = config.startIndex;
-    this.progressBar = multi.newBar('    Index queue: [:bar] :percent | :current/:total', {
+    this.progressBar = multi.newBar('Index queue: [:bar] :percent | :current/:total', {
       complete: '=',
       incomplete: ' ',
       width: 50,
       total: 0
     });
     if (this.startIndex > 0) {
-      this.skipBar = multi.newBar('    Skipping items: [:bar] :percent | :current/:total', {
+      this.skipBar = multi.newBar('Skipping items: [:bar] :percent | :current/:total', {
         complete: '=',
         incomplete: ' ',
         width: 50,
         total: this.startIndex
       });
     }
-    this.failedBar = multi.newBar('    So far failed to index :current document(s)', {
+    this.failedBar = multi.newBar('So far failed to index :current document(s)', {
       complete: '=',
       incomplete: ' ',
       width: 50,
@@ -39,6 +42,7 @@ class Indexer {
     this.total = 0;
     this.skipped = 0;
     this.indexed = 0;
+    this.failedDocuments = [];
   }
 
   async setup() {
@@ -75,8 +79,7 @@ class Indexer {
 
     if (!exists) {
       const createParams = {
-        index: this.index,
-        body: geoBody
+        index: this.index
       };
       try {
         console.log('Creating index "' + this.index + '"');
@@ -112,6 +115,7 @@ class Indexer {
       const document = this.queue.shift();
       const documentSize = JSON.stringify(document).length;
       currentPageSize += documentSize;
+      if (currentPageSize > this.pageSize) break;
       documents.push(document);
     }
     //console.log('Page document count:', documents.length, '| Page size', currentPageSize, '| Documents still in queue', this.queue.length);
@@ -121,6 +125,7 @@ class Indexer {
   }
 
   push(documents) {
+    documents = documents.filter(document => Boolean);
     if (this.startIndex <= this.skipped + documents.length) {
       if (this.skipBar && this.skipBar.current < this.startIndex) {
         this.skipBar.tick(this.startIndex - this.skipBar.current);
@@ -136,7 +141,10 @@ class Indexer {
 
   async indexDocuments(documents) {
     this.indexing = true;
-    const bulkParams = { body: [] };
+    const bulkParams = {
+      timeout: this.timeout,
+      body: [] 
+    };
 
     try {
       for (const document of documents) {
@@ -150,64 +158,48 @@ class Indexer {
 
     try {
       const indexResponse = await this.client.bulk(bulkParams);
-      //console.log('Bulk index finished on', documents.length, 'documents. Errors:', indexResponse.errors && indexResponse.errors.length || '0');
+
       this.indexed += documents.length;
       this.progressBar.tick(documents.length);
 
       if (indexResponse.errors) {
-        await this.recordFailedDocuments(documents, indexResponse);
+        const failed = [];
+        for (const item of indexResponse.items) {
+          const error = item.index.error;
+          if (error && !error.caused_by.reason.startsWith('illegal lat')) {
+            const id = item.index._id;
+            for (const document of documents) {            
+              if (id === document.body.id) {
+                document.reason = error;
+                failed.push(document);
+              }
+            }
+          }
+        }
+        await this.recordFailedDocuments(failed);
       }
 
       this.indexing = false;
     } catch(err) {
-      await this.recordFailedDocuments(documents, err);
+      const failedDocuments = [];
+      for (const document of documents) {
+        document.reason = err;
+        failedDocuments.push(document);
+      }
+      await this.recordFailedDocuments(failedDocuments);
       this.indexing = false;
     }
   }
 
-  createDocument(type, id, places, lat, lon, shape = null, parent = null) {
-    places = Array.isArray(places) 
-      ? places.filter(place => { return !!place && place !== ' '; }) 
-      : [places];
-    const document = {
-      head: { 
-        index: { 
-          _index: this.index, 
-          _type: type, 
-          _id: id 
-        } 
-      },
-      body: {
-        Id: id,
-        place: places,
-        textbag: places.join(' '),
-        point: {
-          lat: lat,
-          lon: lon
-        }
-      }
-    };
-    if (shape) {
-      document.body.shape = shape;
+  async recordFailedDocuments(documents) {
+    try {
+      this.failedBar.tick(documents.length);
+      this.failedDocuments.push(...documents);
+      const failJson = JSON.stringify(this.failedDocuments, null, 2);    
+      fs.writeFileSync(path.join(this.failedDirectory, 'recovery.json'), failJson);
+    } catch(err) {
+      console.error('Failed to backup failed documents', err);
     }
-    if (parent) {
-      document.head.index.parent = parent;
-    }
-    
-    return document;
-  } 
-
-  async recordFailedDocuments(documents, reason) {
-    this.failedBar.tick(documents.length);
-
-    const timestamp = dateFns.format(new Date(), 'YYYY-MM-DD-HH-mm-ss-SS');
-    const filename = timestamp + '.json';
-    const failObject = {
-      documents: documents,
-      reason: reason
-    };
-    const failJson = JSON.stringify(failObject, null, 4);
-    fs.writeFileSync(path.join(this.failedDirectory, filename), failJson);
     await this.sleep(this.cooldown);
   }
 
@@ -222,121 +214,112 @@ class Indexer {
 
 module.exports = { Indexer };
     
-const geoBody = {
-  settings: {
-    analysis: {
-      analyzer: {
-        autocomplete: {
-          tokenizer: "autocomplete",
-          filter: [
-            'lowercase'
+const indexTemplate = {
+  "template": "geo*",
+  "settings": {
+    "analysis": {
+      "filter": {
+        "locations_stop": {
+          "type": "stop",
+          "stopwords": [
+            "city",
+            "of"
           ]
         },
-        autocomplete_search: {
-          tokenizer: "lowercase"
+        "my_snow": {
+          "type": "snowball",
+          "language": "English"
+        },
+        "english_stop": {
+          "type": "stop",
+          "stopwords": "_english_"
         }
       },
-      tokenizer: {
-        autocomplete: {
-          type: "edge_ngram",
-          min_gram: 3,
-          max_gram: 10,
-          token_chars: [
-            "letter"
-          ]
+      "analyzer": {
+        "my_analyzer": {
+          "filter": [
+            "lowercase",
+            "my_snow"
+          ],
+          "type": "custom",
+          "tokenizer": "standard"
+        },
+        "my_stop_analyzer": {
+          "filter": [
+            "lowercase",
+            "english_stop",
+            "my_snow"
+          ],
+          "type": "custom",
+          "tokenizer": "standard"
+        },
+        "autocomplete": {
+          "filter": [
+            "lowercase",
+            "locations_stop"
+          ],
+          "tokenizer": "autocomplete"
+        },
+        "autocomplete_search": {
+          "filter": [
+            "shingle"
+          ],
+          "type": "custom",
+          "tokenizer": "standard"
+        }
+      },
+      "tokenizer": {
+        "autocomplete": {
+          "token_chars": [
+            "letter",
+            "digit",
+            "whitespace",
+            "punctuation"
+          ],
+          "min_gram": "3",
+          "type": "edge_ngram",
+          "max_gram": "10"
         }
       }
     }
   },
-  mappings: {
-    'local-authority-district': {
-      properties: {
-        place: {
-          type: 'keyword'
-        },
-        textbag: {
-          type: 'text',
-          analyzer: 'autocomplete',
-          search_analyzer: 'autocomplete_search'
-        },
-        point: {
-          type: 'geo_point'
-        },
-        shape: {
-          type: 'geo_shape',
-          tree: 'quadtree',
-          precision: '50m'
+  "mappings": {
+    "_default_": {
+      "_all": {
+        "enabled": false
+      },
+      "dynamic_templates": [
+        {
+          "strings": {
+            "match_mapping_type": "string",
+            "mapping": {
+              "type": "keyword"
+            }
+          }
         }
-      }
-    },
-    'electoral-ward': {
-      properties: {
-        place: {
-          type: 'keyword'
+      ],
+      "properties": {
+        "autocomplete": {
+          "type": "text",
+          "analyzer": "autocomplete",
+          "search_analyzer": "autocomplete_search"
         },
-        textbag: {
-          type: 'text',
-          analyzer: 'autocomplete',
-          search_analyzer: 'autocomplete_search'
+        "textbag": {
+          "search_analyzer": "snowball",
+          "search_quote_analyzer": "snowball",
+          "analyzer": "snowball",
+          "store": false,
+          "type": "text"
         },
-        point: {
-          type: 'geo_point'
+        "point": {
+          "type": "geo_point"
         },
-        shape: {
-          type: 'geo_shape',
-          tree: 'quadtree',
-          precision: '50m'
-        }
-      }
-    },
-    'nuts-level-2': {
-      properties: {
-        place: {
-          type: 'keyword'
-        },
-        textbag: {
-          type: 'text',
-          analyzer: 'autocomplete',
-          search_analyzer: 'autocomplete_search'
-        },
-        point: {
-          type: 'geo_point'
-        },
-        shape: {
-          type: 'geo_shape',
-          tree: 'quadtree',
-          precision: '50m'
-        }
-      }
-    },
-    'postcode': {
-      properties: {
-        place: {
-          type: 'keyword'
-        },
-        textbag: {
-          type: 'text',
-          analyzer: 'autocomplete',
-          search_analyzer: 'autocomplete_search'
-        },
-        point: {
-          type: 'geo_point'
-        },
-        shape: {
-          type: 'geo_shape',
-          tree: 'quadtree',
-          precision: '50m'
-        },
-        district: {
-          type: 'keyword'
-        },
-        ward: {
-          type: 'keyword'
-        },
-        nuts: {
-          type: 'keyword'
+        "shape": {
+          "type": "geo_shape",
+          "tree": "quadtree",
+          "precision": "50m"
         }
       }
     }
   }
-};
+}

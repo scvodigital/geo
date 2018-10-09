@@ -1,10 +1,14 @@
 const { Readable }  = require('stream');
+const fs = require('fs');
+const path = require('path');
 const { StringStream } = require('scramjet');
 const r = require('request');
 const rp = require('request-promise-native');
 const dateFns = require('date-fns');
-
+const globby = require('globby');
 const MultiProgress = require('multi-progress');
+const hbs = require('clayhandlebars')();
+
 const multi = new MultiProgress(process.stderr);
 
 const CONFIG = require('./config');
@@ -13,193 +17,163 @@ const { Indexer } = require('./indexer');
 
 const args = process.argv.splice(2);
 const fresh = args.indexOf('fresh') > -1;
-const skipToPostcodes = args.indexOf('skip-to-postcodes');
+
+const onlyFlag = args.indexOf('only');
+const onlyIndex = onlyFlag > -1 ? args.slice(onlyFlag + 1) : CONFIG.jobs.map(job => job.type);
+
 const startIndex = Number(args.filter(arg => Number(arg))[0]) || 0;
 
-const masterProgressBar = multi.newBar('    Pre-postcode: [:bar] :percent | :current/:total', {
+const masterProgressBar = multi.newBar('Processing jobs: [:bar] :percent | :current/:total', {
   complete: '=',
   incomplete: ' ',
   width: 50,
-  total: 8
+  total: 10
 });
-function incrementMasterProgress(nextTask) {
-  masterProgressBar.tick();
-}
 
 const indexer = new Indexer({
   host: SECRETS.eshost,
   index: CONFIG.index,
-  pageSize: CONFIG.indexPageSize,
+  pageSize: CONFIG.indexPageSize || 10000,
   cooldown: CONFIG.cooldown,
   fresh: fresh,
-  startIndex: startIndex
+  startIndex: startIndex,
+  timeout: CONFIG.timeout || '5m'
 }, multi);
 
-const maps = {
-  districts: {},
-  wards: {},
-  nuts: {}
-};
+const maps = {};
 
-async function processDistricts() {
-  //console.log('Downloading Districts data from', CONFIG.districtsUrl);
-  let districts;
-  try {
-    districts = await rp({
-      uri: CONFIG.districtsUrl,
-      json: true,
-      timeout: 1000 * 60 * 10
-    });
-  } catch(err) {
-    console.error('Failed to download Districts data', err);
-    process.exit();
-  }
-  incrementMasterProgress('Districts data downloaded. Processing...');
-  const documents = districts.features.map(feature => {
-    try {
-      const district = feature.properties;
-      const geometry = feature.geometry;
-      const document = indexer.createDocument('local-authority-district', district.lad18cd, [district.lad18nm, district.lad18nmw], district.lat, district.long, geometry);
-      maps.districts[document.body.Id] = document.body.place;
-      return document; 
-    } catch(err) {
-      console.error('Failed to process district', JSON.stringify(feature, null, 4), err);
-      process.exit();
+async function processJobs() {
+  let totalTasks = 0;
+  for (const job of CONFIG.jobs) {
+    maps[job.type] = {};
+    totalTasks++;
+    if (job.dataType === 'geojson') {
+      totalTasks++;
     }
+  }
+  masterProgressBar.total = totalTasks;
+
+  for (const job of CONFIG.jobs) {
+    switch (job.dataType) {
+      case ('geojson'): 
+        await processGeoJsonJob(job);
+        break;
+      case ('csv'):
+        await processCsvJob(job);
+        break;
+      case ('recovery'):
+        await processRecoveryJob(job);
+        break;
+    }
+  }
+}
+
+async function processRecoveryJob(job) {
+  const oldIndexPageSize = indexer.pageSize;
+  const recoveryJson = fs.readFileSync(job.path).toString();
+  const recoveryDocuments = JSON.parse(recoveryJson);
+
+  indexer.push(documents); 
+
+  masterProgressBar.tick();
+}
+
+async function processGeoJsonJob(job) {
+  const indexTemplate = job.indexTemplate ? hbs.compile(job.indexTemplate) : null;
+  const mapsTemplate = job.mapsTemplate ? hbs.compile(job.mapsTemplate) : null;
+  
+  const downloaded = await rp({
+    uri: job.dataUrl,
+    json: true,
+    timeout: 1000 * 60 * 10
   });
-  if (!skipToPostcodes) {
+  
+  masterProgressBar.tick();
+
+  const documents = [];
+  for (const feature of downloaded.features) {
+    if (indexTemplate && onlyIndex.indexOf(job.type) > -1) {
+      const document = getDocument(indexTemplate, feature, job);
+      documents.push(document);
+    }
+    if (mapsTemplate) {
+      updateMaps(mapsTemplate, feature, job);
+    }
+  }
+
+  if (documents.length > 0) {
     indexer.push(documents);
   }
-  incrementMasterProgress('Districts processed');
+
+  masterProgressBar.tick();
 }
 
-async function processWards() {
-  //console.log('Downloading Wards data from', CONFIG.wardsUrl);
-  let wards;
-  try {
-    wards = await rp({
-      uri: CONFIG.wardsUrl,
-      json: true,
-      timeout: 1000 * 60 * 10
-    });
-  } catch(err) {
-    console.error('Failed to download Wards data', err);
-    process.exit();
-  }
-  incrementMasterProgress('Wards data downloaded. Processing...');
-  const documents = wards.features.map(feature => {
-    try {
-      const ward = feature.properties;
-      const geometry = feature.geometry;
-      const document = indexer.createDocument('electoral-ward', ward.wd17cd, [ward.wd17nm, ward.wd17nmw], ward.lat, ward.long, geometry);
-      maps.wards[document.body.Id] = document.body.place;
-      return document; 
-    } catch(err) {
-      console.error('Failed to process Ward', JSON.stringify(feature, null, 4), err);
-      process.exit();
-    }
-  });
-  if (!skipToPostcodes) {
-    indexer.push(documents);
-  }
-  incrementMasterProgress('Wards processed');
-}
-
-async function processNutsLookup() {
-  //console.log('Downloading NUTS Lookup data from', CONFIG.nutsLookupUrl);
-  let nutsLookup;
-  try {
-    nutsLookup = await rp({
-      uri: CONFIG.nutsLookupUrl,
-      json: true,
-      timeout: 1000 * 60 * 10
-    });
-  } catch(err) {
-    console.error('Failed to download NUTS Lookup data', err);
-    process.exit();
-  }
-  incrementMasterProgress('NUTS Lookup data downloaded. Processing...');
-  for (const feature of nutsLookup.features) {
-    try {
-      maps.nuts[feature.properties.LAD16CD] = feature.properties.NUTS218NM;
-    } catch(err) {
-      console.error('Failed to process NUTS Lookup', JSON.stringify(feature, null, 4), err);
-      process.exit();
-    }
-  } 
-  incrementMasterProgress('NUTS Lookup processed');
-}
-
-async function processNuts() {
-  //console.log('Downloading NUTS Level 2 data from', CONFIG.nutsUrl);
-  let nuts;
-  try {
-    nuts = await rp({
-      uri: CONFIG.nutsUrl,
-      json: true,
-      timeout: 1000 * 60 * 10
-    });
-  } catch(err) {
-    console.error('Failed to download NUTS Level 2 data', err);
-    process.exit();
-  }
-  incrementMasterProgress('NUTS level 2 data downloaded. Processing...');
-  const documents = nuts.features.map(feature => {
-    try {
-      const nuts = feature.properties;
-      const geometry = feature.geometry;
-      const document = indexer.createDocument('nuts-level-2', nuts.nuts218cd, nuts.nuts218nm, nuts.lat, nuts.long, geometry);
-      return document;
-    } catch(err) {
-      console.error('Failed to process NUTS', JSON.stringify(feature, null, 4), err);
-      process.exit();
-    }
-  });
-  if (!skipToPostcodes) {
-    indexer.push(documents);
-  }
-  incrementMasterProgress('NUTS Level 2 data processed');
-}
-
-function processPostcodes() {
-  return new Promise(async function(resolve, reject) {
-    const postcodeProgressBar = multi.newBar('    Postcodes processed: [:bar] :percent | :current/:total', {
-      complete: '=',
-      incomplete: ' ',
-      width: 50,
-      total: CONFIG.postcodeCount
-    });
-
-    const request = r(CONFIG.postcodesUrl)
+function processCsvJob(job) {
+  return new Promise((resolve, reject) => {
+    const indexTemplate = job.indexTemplate ? hbs.compile(job.indexTemplate) : null;
+    const mapsTemplate = job.indexTemplate ? hbs.compile(job.mapsTemplate) : null;
+  
+    const request = r(job.dataUrl)
       .pipe(new StringStream())
       .CSVParse({
         delimeter: ',',
         header: true
       })
-      .batch(CONFIG.postcodeBatchSize)
-      .map(postcodes => {
-        const documents = postcodes.map(postcode => {
-          try {
-            const document = indexer.createDocument('postcode', postcode.pcd, postcode.pcd, postcode.lat, postcode.long, null);
-            if (maps.districts.hasOwnProperty(postcode.oslaua)) {
-              document.body.district = maps.districts[postcode.oslaua];
-            }
-            if (maps.wards.hasOwnProperty(postcode.osward)) {
-              document.body.ward = maps.wards[postcode.osward];
-            }
-            if (maps.nuts.hasOwnProperty(postcode.oslaua)) {
-              document.body.nuts = maps.nuts[postcode.oslaua];
-            }
-            return document;
-          } catch(err) {
-            console.error('Failed to process Postcode', JSON.stringify(postcode, null, 4), err);
-            process.exit();
+      .batch(job.batchSize)
+      .map(features => {
+        const documents = [];
+        for (const feature of features) {
+          if (indexTemplate && onlyIndex.indexOf(job.type) > -1) {
+            const document = getDocument(indexTemplate, feature, job);
+            documents.push(document);
           }
-        });
-        indexer.push(documents);
-        postcodeProgressBar.tick(documents.length);
+          if (mapsTemplate) {
+            updateMaps(mapsTemplate, feature, job);
+          }
+        }
+        if (documents.length > 0) {
+          indexer.push(documents);
+        }
+      })
+      .whenEnd(() => {
+        resolve();
+        masterProgressBar.tick();
+      })
+      .whenError((err) => {
+        reject(err);
+        masterProgressBar.tick();
       });
   });
+}
+
+function getDocument(indexTemplate, feature, job) {
+  const bodyJson = indexTemplate({ maps: maps, feature: feature, job: job });
+  try {
+    const body = JSON.parse(bodyJson);
+    const head = {
+      index: {
+        _index: CONFIG.index,
+        _type: job.type,
+        _id: body.id
+      }
+    };
+    return { head: head, body: body };
+  } catch(err) {
+    console.error('Failed to make document', bodyJson, err);
+    return null;
+  }
+}
+
+function updateMaps(mapsTemplate, feature, job) {
+  const mapsJson = mapsTemplate({ maps: maps, feature: feature, job: job });
+  try {
+    const mapsObject = JSON.parse(mapsJson);
+    for (const [key, value] of Object.entries(mapsObject)) {
+      maps[job.type][key] = value;
+    }
+  } catch(err) {
+    console.error('Failed to make maps stuff', mapsJson, err);
+  }
 }
 
 (async function() {
@@ -208,15 +182,28 @@ function processPostcodes() {
 
     await indexer.setup();
     indexer.startIndexer();
-    await processDistricts();
-    await processWards();
-    await processNutsLookup();
-    await processNuts();
-    await processPostcodes();  
 
-    console.log('Finished all processing tasks, wait for the indexer queue to be empty for a bit');
+    await processJobs();
   } catch(err) {
     console.error('Something went wrong', err);
   }
 })();
 
+/*
+ Reference for currently un configured types
+async function processNutsLookup() {
+  for (const feature of nutsLookup.features) {
+      maps.nuts[feature.properties.LAD16CD] = feature.properties.NUTS218NM;
+
+function processPostcodes() {
+  const document = indexer.createDocument('postcode', postcode.pcd, postcode.pcd, postcode.lat, postcode.long, null);
+  if (maps.districts.hasOwnProperty(postcode.oslaua)) {
+    document.body.district = maps.districts[postcode.oslaua];
+  }
+  if (maps.wards.hasOwnProperty(postcode.osward)) {
+    document.body.ward = maps.wards[postcode.osward];
+  }
+  if (maps.nuts.hasOwnProperty(postcode.oslaua)) {
+    document.body.nuts = maps.nuts[postcode.oslaua];
+  }
+*/

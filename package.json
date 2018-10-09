@@ -18,12 +18,17 @@
   },
   "homepage": "https://github.com/scvodigital/geo#readme",
   "dependencies": {
+    "clayhandlebars": "^3.2.6",
     "date-fns": "^1.29.0",
+    "deepmerge": "^2.2.1",
+    "dot-object": "^1.7.0",
     "elasticsearch": "^15.1.1",
+    "globby": "^8.0.1",
     "multi-progress": "^2.0.0",
     "papaparse": "^4.6.0",
     "request": "^2.88.0",
     "request-promise-native": "^1.0.5",
-    "scramjet": "^4.18.11"
+    "scramjet": "^4.18.11",
+    "string": "^3.3.3"
   }
 }
