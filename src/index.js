@@ -1,11 +1,13 @@
 const { Readable }  = require('stream');
 const fs = require('fs');
+const { Duplex } = require('stream');
 const path = require('path');
 const { StringStream } = require('scramjet');
 const r = require('request');
 const rp = require('request-promise-native');
 const dateFns = require('date-fns');
 const globby = require('globby');
+const shp2json = require('shp2json');
 const MultiProgress = require('multi-progress');
 const hbs = require('clayhandlebars')();
 
@@ -61,6 +63,9 @@ async function processJobs() {
       case ('csv'):
         await processCsvJob(job);
         break;
+      case ('zipped-shapefile'):
+        await processZippedShapefileJob(job);
+        break;
       case ('recovery'):
         await processRecoveryJob(job);
         break;
@@ -111,7 +116,7 @@ async function processGeoJsonJob(job) {
 function processCsvJob(job) {
   return new Promise((resolve, reject) => {
     const indexTemplate = job.indexTemplate ? hbs.compile(job.indexTemplate) : null;
-    const mapsTemplate = job.indexTemplate ? hbs.compile(job.mapsTemplate) : null;
+    const mapsTemplate = job.mapsTemplate ? hbs.compile(job.mapsTemplate) : null;
   
     const request = r(job.dataUrl)
       .pipe(new StringStream())
@@ -136,13 +141,58 @@ function processCsvJob(job) {
         }
       })
       .whenEnd(() => {
-        resolve();
         masterProgressBar.tick();
+        resolve();
       })
       .whenError((err) => {
-        reject(err);
         masterProgressBar.tick();
+        reject(err);
       });
+  });
+}
+
+function processZippedShapefileJob(job) {
+  return new Promise(async (resolve, reject) => {
+    const indexTemplate = job.indexTemplate ? hbs.compile(job.indexTemplate) : null;
+    const mapsTemplate = job.mapsTemplate ? hbs.compile(job.mapsTemplate) : null;
+
+    const res = await rp({
+      url: job.dataUrl,
+      encoding: null
+    });
+    const buff = Buffer.from(res, 'utf8');
+    
+    const stream = new Duplex();
+    stream.push(buff);
+    stream.push(null);
+    const outStream = shp2json(stream);
+
+    let json = '';
+    outStream.on('data', function(data) {
+      json += data.toString();
+    });
+
+    outStream.on('end', function() {
+      const geoJson = JSON.parse(json);
+      const documents = [];
+
+      for (const feature of geoJson.features) {
+        if (indexTemplate && onlyIndex.indexOf(job.type) > -1) {
+          const document = getDocument(indexTemplate, feature, job);
+          documents.push(document);
+        }
+        if (mapsTemplate) {
+          updateMaps(mapsTemplate, feature, job);
+        }
+      }
+
+      if (documents.length > 0) {
+        indexer.push(documents);
+      }
+
+      masterProgressBar.tick();
+      resolve()
+    });
   });
 }
 
@@ -160,6 +210,7 @@ function getDocument(indexTemplate, feature, job) {
     return { head: head, body: body };
   } catch(err) {
     console.error('Failed to make document', bodyJson, err);
+    process.exit();
     return null;
   }
 }
@@ -173,6 +224,7 @@ function updateMaps(mapsTemplate, feature, job) {
     }
   } catch(err) {
     console.error('Failed to make maps stuff', mapsJson, err);
+    process.exit();
   }
 }
 

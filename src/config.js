@@ -14,6 +14,39 @@ module.exports = {
   postcodesUrl: 'https://opendata.arcgis.com/datasets/75edec484c5d49bcadd4893c0ebca0ff_0.csv?session=undefined&outSR=%7B%22wkid%22%3A27700%2C%22latestWkid%22%3A27700%7D',
   jobs: [
     {
+      type: 'nhs-scotland',
+      dataUrl: 'http://sedsh127.sedsh.gov.uk/Atom_data/ScotGov/ZippedShapefiles/SG_NHS_HealthBoards_2018.zip',
+      dataType: 'zipped-shapefile',
+      shapeFilename: 'SG_NHS_HealthBoards_2018.shp',
+      indexTemplate: `{
+        "id": {{{stringify feature.properties.HBCode}}},
+        "display": {{{stringify feature.properties.HBName}}},
+        "place": {{{stringify feature.properties.HBName}}},
+        "textbag": {{{stringify feature.properties.HBName}}},
+        "autocomplete": {{{stringify feature.properties.HBName}}},
+        "shape": {{{stringify feature.geometry}}},
+      }`
+    },
+    {
+      type: 'nuts-lookup',
+      dataUrl: 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/LAD16_LAU118_NUTS318_NUTS218_NUTS118_UK_LUv2/FeatureServer/0/query?where=1%3D1&outFields=LAD16CD,LAD16NM,NUTS318CD,NUTS318NM,NUTS218CD&returnDistinctValues=true&outSR=4326&f=json',
+      dataType: 'geojson',
+      mapsTemplate: `{
+        {{{stringify feature.attributes.LAD16CD}}}: {
+          "nuts3Code": {{{stringify feature.attributes.NUTS318CD}}},
+          "nuts3Name": {{{stringify feature.attributes.NUTS318NM}}}
+        },
+        {{{stringify feature.attributes.NUTS318CD}}}: {
+          "districtCode": {{{stringify feature.attributes.LAD16CD}}},
+          "districtName": {{{stringify feature.attributes.LAD16NM}}}
+        },
+        {{{stringify feature.attributes.NUTS318NM}}}: {
+          "districtCode": {{{stringify feature.attributes.LAD16CD}}},
+          "districtName": {{{stringify feature.attributes.LAD16NM}}}
+        }
+      }`
+    },
+    {
       type: 'district',
       dataUrl: 'https://opendata.arcgis.com/datasets/593018bf59ab4699b66355bd33cd186d_4.geojson',
       dataType: 'geojson',
@@ -25,7 +58,7 @@ module.exports = {
         "autocomplete": {{{stringify feature.properties.lad18nm}}},
         "lat": {{{stringify feature.properties.lat}}},
         "lon": {{{stringify feature.properties.long}}},
-        "shape": {{{stringify feature.geometry}}}
+        "shape": {{{stringify feature.geometry}}},
       }`,
       mapsTemplate: `{
         {{{stringify feature.properties.lad18cd}}}: {
@@ -34,6 +67,36 @@ module.exports = {
         {{{stringify feature.properties.lad18nm}}}: {
           "id": {{{stringify feature.properties.lad18cd}}}
         }
+      }`
+    },
+    {
+      type: 'nhs-england',
+      dataUrl: 'https://opendata.arcgis.com/datasets/b9d40a5fcdc74124b2244d05705ae492_4.geojson',
+      dataType: 'geojson',
+      indexTemplate: `{
+        "id": {{{stringify feature.properties.nhser18cd}}},
+        "display": {{{stringify feature.properties.nhser18nm}}},
+        "place": {{{stringify feature.properties.nhser18nm}}},
+        "textbag": {{{stringify feature.properties.nhser18nm}}},
+        "autocomplete": {{{stringify feature.properties.nhser18nm}}},
+        "lat": {{{stringify feature.properties.lat}}},
+        "lon": {{{stringify feature.properties.long}}},
+        "shape": {{{stringify feature.geometry}}},
+      }`
+    },
+    {
+      type: 'nhs-wales',
+      dataUrl: 'https://opendata.arcgis.com/datasets/87e71b2c79fc4ac894eeb79359cda131_4.geojson',
+      dataType: 'geojson',
+      indexTemplate: `{
+        "id": {{{stringify feature.properties.lhb16cd}}},
+        "display": {{{stringify feature.properties.lhb16nm}}},
+        "place": {{{stringify feature.properties.lhb16nm}}},
+        "textbag": {{{stringify feature.properties.lhb16nm}}},
+        "autocomplete": {{{stringify feature.properties.lhb16nm}}},
+        "lat": {{{stringify feature.properties.lat}}},
+        "lon": {{{stringify feature.properties.long}}},
+        "shape": {{{stringify feature.geometry}}},
       }`
     },
     {
