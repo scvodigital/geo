@@ -18,13 +18,14 @@ module.exports = {
       dataUrl: 'http://sedsh127.sedsh.gov.uk/Atom_data/ScotGov/ZippedShapefiles/SG_NHS_HealthBoards_2018.zip',
       dataType: 'zipped-shapefile',
       shapeFilename: 'SG_NHS_HealthBoards_2018.shp',
+      geoJsonReduce: 20,
       indexTemplate: `{
         "id": {{{stringify feature.properties.HBCode}}},
         "display": {{{stringify feature.properties.HBName}}},
         "place": {{{stringify feature.properties.HBName}}},
         "textbag": {{{stringify feature.properties.HBName}}},
         "autocomplete": {{{stringify feature.properties.HBName}}},
-        "shape": {{{stringify feature.geometry}}},
+        "shape": {{{stringify feature.geometry}}}
       }`
     },
     {

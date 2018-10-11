@@ -101,7 +101,7 @@ class Indexer {
 
   startIndexer() {
     if (this.ticker) return;
-    console.log('Starting indexer\n\n\n\n\n\n\n');
+    console.log('Starting indexer');
     this.ticker = setInterval(async () => {
       await this.tick();
     }, 0);
@@ -115,7 +115,7 @@ class Indexer {
       const document = this.queue.shift();
       const documentSize = JSON.stringify(document).length;
       currentPageSize += documentSize;
-      if (currentPageSize > this.pageSize) break;
+      if (documents.length > 0 && currentPageSize > this.pageSize) break;
       documents.push(document);
     }
     //console.log('Page document count:', documents.length, '| Page size', currentPageSize, '| Documents still in queue', this.queue.length);
@@ -160,7 +160,6 @@ class Indexer {
       const indexResponse = await this.client.bulk(bulkParams);
 
       this.indexed += documents.length;
-      this.progressBar.tick(documents.length);
 
       if (indexResponse.errors) {
         const failed = [];
@@ -179,6 +178,7 @@ class Indexer {
         await this.recordFailedDocuments(failed);
       }
 
+      this.progressBar.tick(documents.length);
       this.indexing = false;
     } catch(err) {
       const failedDocuments = [];
@@ -187,6 +187,7 @@ class Indexer {
         failedDocuments.push(document);
       }
       await this.recordFailedDocuments(failedDocuments);
+      this.progressBar.tick(documents.length);
       this.indexing = false;
     }
   }

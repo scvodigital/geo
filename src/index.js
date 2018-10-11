@@ -8,6 +8,8 @@ const rp = require('request-promise-native');
 const dateFns = require('date-fns');
 const globby = require('globby');
 const shp2json = require('shp2json');
+const turf = require('@turf/turf');
+const geojsonReducer = require('geojson-reducer');
 const MultiProgress = require('multi-progress');
 const hbs = require('clayhandlebars')();
 
@@ -49,8 +51,9 @@ async function processJobs() {
   for (const job of CONFIG.jobs) {
     maps[job.type] = {};
     totalTasks++;
-    if (job.dataType === 'geojson') {
+    if (job.dataType !== 'csv' && job.dataType !== 'recovery') {
       totalTasks++;
+      totalTasks += job.reduceGeoJson || 0;
     }
   }
   masterProgressBar.total = totalTasks;
@@ -87,16 +90,23 @@ async function processGeoJsonJob(job) {
   const indexTemplate = job.indexTemplate ? hbs.compile(job.indexTemplate) : null;
   const mapsTemplate = job.mapsTemplate ? hbs.compile(job.mapsTemplate) : null;
   
-  const downloaded = await rp({
+  let downloaded = await rp({
     uri: job.dataUrl,
-    json: true,
+    json: false,
     timeout: 1000 * 60 * 10
   });
   
   masterProgressBar.tick();
 
+  let geoJson;
+  if (job.geoJsonReduce) {
+    geoJson = reduce(downloaded, job.geoJsonReduce);
+  } else {
+    geoJson = JSON.parse(downloaded);
+  }
+
   const documents = [];
-  for (const feature of downloaded.features) {
+  for (const feature of geoJson.features) {
     if (indexTemplate && onlyIndex.indexOf(job.type) > -1) {
       const document = getDocument(indexTemplate, feature, job);
       documents.push(document);
@@ -162,20 +172,37 @@ function processZippedShapefileJob(job) {
     });
     const buff = Buffer.from(res, 'utf8');
     
+    masterProgressBar.tick();
+
     const stream = new Duplex();
     stream.push(buff);
     stream.push(null);
     const outStream = shp2json(stream);
 
-    let json = '';
+    let jsonChunks = [];
+    let readCount = 0;
     outStream.on('data', function(data) {
-      json += data.toString();
+      data = data.toString();
+      jsonChunks.push(data);
     });
 
-    outStream.on('end', function() {
-      const geoJson = JSON.parse(json);
+    outStream.on('end', async function() {
+      const json = jsonChunks.join('');
+      let geoJson;
+
+      if (job.geoJsonReduce) {
+        const before = json.length;
+        geoJson = reduce(json, job.geoJsonReduce);
+        const after = JSON.stringify(geoJson).length;
+      } else {
+        geoJson = JSON.parse(json);
+      }
       const documents = [];
 
+      //Need to check a diff of input and output to see what if anything this is doing.
+      //Perhaps try https://www.npmjs.com/package/clean-pslg as the following doesn't seem to fix anything.
+      feature = turf.unkinkPolygon(geoJson);
+      
       for (const feature of geoJson.features) {
         if (indexTemplate && onlyIndex.indexOf(job.type) > -1) {
           const document = getDocument(indexTemplate, feature, job);
@@ -228,7 +255,65 @@ function updateMaps(mapsTemplate, feature, job) {
   }
 }
 
-(async function() {
+function reduce(geoJson, times = 1) {
+  for (let t = 0; t < times; t++) {
+    if (typeof geoJson !== 'string') {
+      geoJson = JSON.stringify(geoJson);
+    }
+    console.log('Reduction:', t, '| Before:', geoJson.length);
+    geoJson = geojsonReducer.reduceGeoJson(geoJson);
+    geoJson = fixPolygons(geoJson);
+    console.log('Reduction:', t, '| After:', JSON.stringify(geoJson).length);
+    masterProgressBar.tick();
+  }
+  return geoJson;
+}
+
+function fixPolygons(geoJson) {
+  for (const feature of geoJson.features) {
+    if (feature.geometry.type == 'MultiPolygon' || feature.geometry.type == 'Polygon') {
+      feature.coordinates = fixCoordArray(feature.geometry.coordinates);
+    } 
+  }
+  return geoJson;
+}
+
+function fixCoordArray(array) {
+  if (isCoordsArray(array)) {
+    if (array.length < 8) {
+      for (let c = 0; c < array.length - 1; c++) {
+        const midLat = (array[c][0] + array[c + 1][0]) / 2;
+        const midLng = (array[c][1] + array[c + 1][1]) / 2;
+        array.splice(++c, 0, [midLat, midLng]);
+      }
+    }
+
+    const first = array[0];
+    const last = array[array.length - 1];
+    if (first[0] !== last[0] || first[1] !== last[1]) {
+      array.push(first);
+    }
+  } else { 
+    if (Array.isArray(array)) {
+      for (let i = 0; i < array.length; i++) {
+        array[i] = fixCoordArray(array[i]);
+      }
+    } else {
+    }
+  }
+  return array;
+}
+
+function isCoordsArray(array) {
+  return Array.isArray(array) && 
+    array.length > 0 &&
+    Array.isArray(array[0]) &&
+    array[0].length === 2 &&
+    typeof array[0][0] === 'number' &&
+    typeof array[0][1] === 'number' ;
+}
+
+async function main() {
   try {
     console.log('Job started at:', dateFns.format('YYYY-MM-DD HH:mm:ss')); 
 
@@ -239,7 +324,30 @@ function updateMaps(mapsTemplate, feature, job) {
   } catch(err) {
     console.error('Something went wrong', err);
   }
-})();
+};
+
+function sleep(ms, debug = false) {
+  return new Promise((resolve, reject) => {
+    if (debug) {
+      console.log('Sleeping for', ms + 'ms');
+    }
+    setTimeout(() => {
+      console.log('Finished sleeping');
+      resolve();
+    }, ms);
+  });
+}
+
+if (process.debugPort) {
+  console.log('Debug mode on. Connect your inspector and press any key to continue.');
+  process.stdin.once('data', async function () {
+    await main();
+  });
+} else {
+  (async function() {
+    await main();
+  })();
+}
 
 /*
  Reference for currently un configured types
