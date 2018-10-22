@@ -19,6 +19,8 @@ module.exports = {
       dataType: 'zipped-shapefile',
       shapeFilename: 'SG_NHS_HealthBoards_2018.shp',
       geoJsonReduce: 20,
+      unkinkPolygon: true,
+      idProperty: 'HBCode',
       indexTemplate: `{
         "id": {{{stringify feature.properties.HBCode}}},
         "display": {{{stringify feature.properties.HBName}}},
@@ -51,6 +53,9 @@ module.exports = {
       type: 'district',
       dataUrl: 'https://opendata.arcgis.com/datasets/593018bf59ab4699b66355bd33cd186d_4.geojson',
       dataType: 'geojson',
+      geoJsonReduce: 2,
+      idProperty: 'lad18cd',
+      unkinkPolygon: true,
       indexTemplate: `{
         "id": {{{stringify feature.properties.lad18cd}}},
         "display": {{{stringify feature.properties.lad18nm}}},
@@ -59,7 +64,7 @@ module.exports = {
         "autocomplete": {{{stringify feature.properties.lad18nm}}},
         "lat": {{{stringify feature.properties.lat}}},
         "lon": {{{stringify feature.properties.long}}},
-        "shape": {{{stringify feature.geometry}}},
+        "shape": {{{stringify feature.geometry}}}
       }`,
       mapsTemplate: `{
         {{{stringify feature.properties.lad18cd}}}: {
@@ -74,6 +79,9 @@ module.exports = {
       type: 'nhs-england',
       dataUrl: 'https://opendata.arcgis.com/datasets/b9d40a5fcdc74124b2244d05705ae492_4.geojson',
       dataType: 'geojson',
+      geoJsonReduce: 2,
+      idProperty: 'nhser18cd',
+      unkinkPolygon: true,
       indexTemplate: `{
         "id": {{{stringify feature.properties.nhser18cd}}},
         "display": {{{stringify feature.properties.nhser18nm}}},
@@ -82,13 +90,16 @@ module.exports = {
         "autocomplete": {{{stringify feature.properties.nhser18nm}}},
         "lat": {{{stringify feature.properties.lat}}},
         "lon": {{{stringify feature.properties.long}}},
-        "shape": {{{stringify feature.geometry}}},
+        "shape": {{{stringify feature.geometry}}}
       }`
     },
     {
       type: 'nhs-wales',
       dataUrl: 'https://opendata.arcgis.com/datasets/87e71b2c79fc4ac894eeb79359cda131_4.geojson',
       dataType: 'geojson',
+      geoJsonReduce: 2,
+      idProperty: 'lhb16cd',
+      unkinkPolygon: true,
       indexTemplate: `{
         "id": {{{stringify feature.properties.lhb16cd}}},
         "display": {{{stringify feature.properties.lhb16nm}}},
@@ -97,13 +108,16 @@ module.exports = {
         "autocomplete": {{{stringify feature.properties.lhb16nm}}},
         "lat": {{{stringify feature.properties.lat}}},
         "lon": {{{stringify feature.properties.long}}},
-        "shape": {{{stringify feature.geometry}}},
+        "shape": {{{stringify feature.geometry}}}
       }`
     },
     {
       type: 'ward',
       dataUrl: 'https://opendata.arcgis.com/datasets/07194e4507ae491488471c84b23a90f2_3.geojson',
       dataType: 'geojson',
+      geoJsonReduce: 2,
+      idProperty: 'wd17cd',
+      unkinkPolygon: true,
       indexTemplate: `{
         "id": {{{stringify feature.properties.wd17cd}}},
         "display": {{{stringify feature.properties.wd17nm}}},
@@ -127,6 +141,9 @@ module.exports = {
       type: 'nuts-3',
       dataUrl: 'https://opendata.arcgis.com/datasets/473aefdcee19418da7e5dbfdeacf7b90_4.geojson',
       dataType: 'geojson',
+      geoJsonReduce: 2,
+      idProperty: 'nuts318cd',
+      unkinkPolygon: true,
       indexTemplate: `{
         "id": {{{stringify feature.properties.nuts318cd}}},
         "display": {{{stringify feature.properties.nuts318nm}}},

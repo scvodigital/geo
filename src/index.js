@@ -90,21 +90,22 @@ async function processGeoJsonJob(job) {
   const indexTemplate = job.indexTemplate ? hbs.compile(job.indexTemplate) : null;
   const mapsTemplate = job.mapsTemplate ? hbs.compile(job.mapsTemplate) : null;
   
-  let downloaded = await rp({
+  let geoJson = await rp({
     uri: job.dataUrl,
-    json: false,
+    json: true,
     timeout: 1000 * 60 * 10
   });
   
   masterProgressBar.tick();
 
-  let geoJson;
   if (job.geoJsonReduce) {
-    geoJson = reduce(downloaded, job.geoJsonReduce);
-  } else {
-    geoJson = JSON.parse(downloaded);
+    geoJson = reduce(geoJson, job);
   }
 
+  if (job.unkinkPolygon) {
+    geoJson = unkinkPolygon(geoJson, job);
+  }
+  
   const documents = [];
   for (const feature of geoJson.features) {
     if (indexTemplate && onlyIndex.indexOf(job.type) > -1) {
@@ -192,16 +193,16 @@ function processZippedShapefileJob(job) {
 
       if (job.geoJsonReduce) {
         const before = json.length;
-        geoJson = reduce(json, job.geoJsonReduce);
+        geoJson = reduce(json, job);
         const after = JSON.stringify(geoJson).length;
       } else {
         geoJson = JSON.parse(json);
       }
       const documents = [];
 
-      //Need to check a diff of input and output to see what if anything this is doing.
-      //Perhaps try https://www.npmjs.com/package/clean-pslg as the following doesn't seem to fix anything.
-      feature = turf.unkinkPolygon(geoJson);
+      if (job.unkinkPolygon) {
+        geoJson = unkinkPolygon(geoJson, job);
+      }
       
       for (const feature of geoJson.features) {
         if (indexTemplate && onlyIndex.indexOf(job.type) > -1) {
@@ -255,31 +256,69 @@ function updateMaps(mapsTemplate, feature, job) {
   }
 }
 
-function reduce(geoJson, times = 1) {
-  for (let t = 0; t < times; t++) {
-    if (typeof geoJson !== 'string') {
-      geoJson = JSON.stringify(geoJson);
+function unkinkPolygon(featureCollection, job) {
+  try {
+    featureCollection = turf.unkinkPolygon(featureCollection);
+    
+    const featuresMap = {};
+    for (const feature of featureCollection.features) {
+      const id = feature.properties[job.idProperty];
+      if (!featuresMap.hasOwnProperty(id)) {
+        featuresMap[id] = turf.multiPolygon([feature.geometry.coordinates], feature.properties);
+      } else {
+        featuresMap[id].geometry.coordinates.push(feature.geometry.coordinates);
+      }
     }
-    console.log('Reduction:', t, '| Before:', geoJson.length);
-    geoJson = geojsonReducer.reduceGeoJson(geoJson);
-    geoJson = fixPolygons(geoJson);
-    console.log('Reduction:', t, '| After:', JSON.stringify(geoJson).length);
-    masterProgressBar.tick();
+
+    const features = turf.featureCollection(Object.values(featuresMap));
+    return features;
+  } catch (err) {
+    console.error('Failed to ukink polygons', err, job);
+    return featureCollection;
   }
-  return geoJson;
 }
 
-function fixPolygons(geoJson) {
-  for (const feature of geoJson.features) {
-    if (feature.geometry.type == 'MultiPolygon' || feature.geometry.type == 'Polygon') {
-      feature.coordinates = fixCoordArray(feature.geometry.coordinates);
-    } 
+function reduce(geoJson, job) {
+  try {
+    for (let t = 0; t < job.geoJsonReduce; t++) {
+      if (typeof geoJson !== 'string') {
+        geoJson = JSON.stringify(geoJson);
+      }
+      console.log('Reduction:', t, '| Before:', geoJson.length);
+      geoJson = geojsonReducer.reduceGeoJson(geoJson);
+      geoJson = fixPolygons(geoJson, job);
+      console.log('Reduction:', t, '| After:', JSON.stringify(geoJson).length);
+      masterProgressBar.tick();
+    }
+    return geoJson;
+  } catch (err) {
+    console.error('Failed to reduce polygons', err, job);
+    process.exit();
+  }
+}
+
+function fixPolygons(geoJson, job) {
+  try {
+    for (const feature of geoJson.features) {
+      if (feature.geometry.type == 'MultiPolygon' || feature.geometry.type == 'Polygon') {
+        feature.coordinates = fixCoordArray(feature.geometry.coordinates, job);
+      } 
+    }
+  } catch (err) {
+    console.error('Failed to fix polygons', err, job);
   }
   return geoJson;
 }
 
 function fixCoordArray(array) {
+  try {
   if (isCoordsArray(array)) {
+    const seen = {};
+    array = array.filter(coord => {
+      const key = coord.join();
+      return seen.hasOwnProperty(key) ? false : (seen[key] = true);
+    });
+
     if (array.length < 8) {
       for (let c = 0; c < array.length - 1; c++) {
         const midLat = (array[c][0] + array[c + 1][0]) / 2;
@@ -288,11 +327,7 @@ function fixCoordArray(array) {
       }
     }
 
-    const first = array[0];
-    const last = array[array.length - 1];
-    if (first[0] !== last[0] || first[1] !== last[1]) {
-      array.push(first);
-    }
+    array.push(array[0]);
   } else { 
     if (Array.isArray(array)) {
       for (let i = 0; i < array.length; i++) {
@@ -302,6 +337,10 @@ function fixCoordArray(array) {
     }
   }
   return array;
+  } catch (err) {
+    console.error('Failed to fix coord array', err, job);
+    process.exit();
+  }
 }
 
 function isCoordsArray(array) {
