@@ -1,3 +1,4 @@
+const util = require('util');
 const { Readable }  = require('stream');
 const fs = require('fs');
 const { Duplex } = require('stream');
@@ -12,7 +13,8 @@ const turf = require('@turf/turf');
 const geojsonReducer = require('geojson-reducer');
 const MultiProgress = require('multi-progress');
 const hbs = require('clayhandlebars')();
-
+const extend = require('extend');
+const dot = require('dot-object');
 const multi = new MultiProgress(process.stderr);
 
 const CONFIG = require('./config');
@@ -45,6 +47,14 @@ const indexer = new Indexer({
 }, multi);
 
 const maps = {};
+
+hbs.registerHelper('dot', (path, obj, options) => {
+  try {
+    return dot.pick(path, obj);
+  } catch(err) {
+    console.error('Error in dot-object:', err, path);
+  }
+});
 
 async function processJobs() {
   let totalTasks = 0;
@@ -81,47 +91,97 @@ async function processRecoveryJob(job) {
   const recoveryJson = fs.readFileSync(job.path).toString();
   const recoveryDocuments = JSON.parse(recoveryJson);
 
-  indexer.push(documents); 
+  indexer.progressBar.total += recoveryDocuments.length;
+
+  for (const document of recoveryDocuments) {
+    delete document.reason;
+  }
 
   masterProgressBar.tick();
+  const chunks = chunksOfSize(recoveryDocuments, CONFIG.indexPageSize);
+  
+  for (const chunk of chunks) {
+    if (Array.isArray(chunk) && chunk.length > 0) {
+      await indexer.indexDocuments(chunk);
+    }
+  } 
+ 
 }
 
 async function processGeoJsonJob(job) {
   const indexTemplate = job.indexTemplate ? hbs.compile(job.indexTemplate) : null;
   const mapsTemplate = job.mapsTemplate ? hbs.compile(job.mapsTemplate) : null;
-  
-  let geoJson = await rp({
-    uri: job.dataUrl,
+
+  const countUrl = job.dataUrl + (job.dataUrl.indexOf('?') > -1 ? '&' : '?') + 'returnCountOnly=true';
+  const countResponse = await rp({
+    uri: countUrl,
     json: true,
     timeout: 1000 * 60 * 10
   });
-  
-  masterProgressBar.tick();
+  const count = countResponse.count;
+  const pages = Math.floor(count / 1000);
+  masterProgressBar.total = masterProgressBar.total + pages;
 
-  if (job.geoJsonReduce) {
-    geoJson = reduce(geoJson, job);
+  if (indexTemplate && onlyIndex.indexOf(job.type) > -1) {
+    indexer.progressBar.total += count;
   }
 
-  if (job.unkinkPolygon) {
-    geoJson = unkinkPolygon(geoJson, job);
-  }
-  
-  const documents = [];
-  for (const feature of geoJson.features) {
-    if (indexTemplate && onlyIndex.indexOf(job.type) > -1) {
-      const document = getDocument(indexTemplate, feature, job);
-      documents.push(document);
+  let offset = 0;
+  while (true) {
+    let geoJson = null;
+    const cachePath = path.join(__dirname, '../data/cache/' + job.type + '-' + offset + '.json');
+    if (fs.existsSync(cachePath)) {
+      geoJson = JSON.parse(fs.readFileSync(cachePath).toString());
+    } else {
+      const url = job.dataUrl + (job.dataUrl.indexOf('?') > -1 ? '&' : '?') + 'resultRecordCount=' + (job.pageSize || 1000) + '&resultOffset=' + offset;
+      geoJson = await rp({
+        uri: url,
+        json: true,
+        timeout: 1000 * 60 * 10
+      });
+      fs.writeFileSync(cachePath, JSON.stringify(geoJson));
     }
-    if (mapsTemplate) {
-      updateMaps(mapsTemplate, feature, job);
+
+    masterProgressBar.tick();
+    
+    if (!geoJson || !Array.isArray(geoJson.features) || geoJson.features.length === 0) {
+      break;
+    }
+    
+    if (job.geoJsonReduce) {
+      geoJson = reduce(geoJson, job);
+    }
+
+    if (job.unkinkPolygon) {
+      geoJson = unkinkPolygon(geoJson, job);
+    }
+    
+    const documents = [];
+    for (const feature of geoJson.features) {
+      if (indexTemplate && onlyIndex.indexOf(job.type) > -1) {
+        const document = getDocument(indexTemplate, feature, job);
+        documents.push(document);
+      }
+      if (mapsTemplate) {
+        updateMaps(mapsTemplate, feature, job);
+      }
+    }
+
+    if (documents.length > 0) {
+      var chunks = chunksOfSize(documents, CONFIG.indexPageSize);
+      for (const chunk of chunks) {
+        if (Array.isArray(chunk) && chunk.length > 0) {
+          await indexer.indexDocuments(chunk);
+        }
+      } 
+    }
+    
+    offset += geoJson.features.length;
+
+    if (!geoJson.exceededTransferLimit) {
+      break;
     }
   }
-
-  if (documents.length > 0) {
-    indexer.push(documents);
-  }
-
-  masterProgressBar.tick();
 }
 
 function processCsvJob(job) {
@@ -154,10 +214,6 @@ function processCsvJob(job) {
       .whenEnd(() => {
         masterProgressBar.tick();
         resolve();
-      })
-      .whenError((err) => {
-        masterProgressBar.tick();
-        reject(err);
       });
   });
 }
@@ -247,9 +303,7 @@ function updateMaps(mapsTemplate, feature, job) {
   const mapsJson = mapsTemplate({ maps: maps, feature: feature, job: job });
   try {
     const mapsObject = JSON.parse(mapsJson);
-    for (const [key, value] of Object.entries(mapsObject)) {
-      maps[job.type][key] = value;
-    }
+    extend(true, maps[job.type], mapsObject);
   } catch(err) {
     console.error('Failed to make maps stuff', mapsJson, err);
     process.exit();
@@ -360,6 +414,9 @@ async function main() {
     indexer.startIndexer();
 
     await processJobs();
+
+    const mapsJson = JSON.stringify(maps, null, 2);
+    fs.writeFileSync(path.join(__dirname, '../data/maps.json'), mapsJson);
   } catch(err) {
     console.error('Something went wrong', err);
   }
@@ -375,6 +432,23 @@ function sleep(ms, debug = false) {
       resolve();
     }, ms);
   });
+}
+
+function chunksOfSize(items, size) {
+  const chunks = [];
+  let currentPageSize = 0;
+  let currentPage = 0;
+  while (items.length > 0) {
+    if (chunks.length - 1 < currentPage) {
+      chunks[currentPage] = [];
+      currentPageSize = 0;
+    }
+    const item = items.shift();
+    chunks[currentPage].push(item);
+    currentPageSize += JSON.stringify(item).length;
+    if (currentPageSize > size) currentPage ++;
+  }
+  return chunks;
 }
 
 if (process.debugPort) {

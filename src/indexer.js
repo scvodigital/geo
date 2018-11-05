@@ -91,10 +91,12 @@ class Indexer {
       }
     }
 
-    const timestamp = dateFns.format(new Date(), 'YYYY-MM-DD-HH-mm-ss');
-    this.failedDirectory = path.join(__dirname, '../data/failed-' + timestamp);
-    console.log('Creating directory for documents that fail to index at', this.failedDirectory);
-    fs.mkdirSync(this.failedDirectory);
+    this.timestamp = dateFns.format(new Date(), 'YYYY-MM-DD-HH-mm-ss');
+    this.failedDirectory = path.join(__dirname, '../data/failed');
+    if (!fs.existsSync(this.failedDirectory)) {
+      console.log('Creating directory for documents that fail to index at', this.failedDirectory);
+      fs.mkdirSync(this.failedDirectory);
+    }
 
     console.log('Indexer ready');
   }
@@ -126,20 +128,24 @@ class Indexer {
 
   push(documents) {
     documents = documents.filter(document => Boolean);
-    if (this.startIndex <= this.skipped + documents.length) {
-      if (this.skipBar && this.skipBar.current < this.startIndex) {
-        this.skipBar.tick(this.startIndex - this.skipBar.current);
-      }
-      this.total += documents.length;
-      this.progressBar.total = this.total;
-      this.queue.push(...documents);
-    } else {
-      this.skipped += documents.length;
-      this.skipBar.tick(documents.length);
-    }
+    this.total += documents.length;
+    this.progressBar.total = this.total;
+    this.queue.push(...documents);
   }
 
   async indexDocuments(documents) {
+    if (!Array.isArray(documents) || documents.length === 0) {
+      return;
+    }
+    if (this.startIndex >= this.skipped + documents.length) {
+      this.skipped += documents.length;
+      this.skipBar.tick(documents.length);
+      this.progressBar.tick(documents.length);
+      return;
+    } else if (this.skipBar && this.skipBar.current < this.startIndex) {
+      this.skipBar.tick(this.startIndex - this.skipBar.current);
+    }
+
     this.indexing = true;
     const bulkParams = {
       timeout: this.timeout,
@@ -194,10 +200,13 @@ class Indexer {
 
   async recordFailedDocuments(documents) {
     try {
+      if (!Array.isArray(documents) || documents.length === 0) {
+        return;
+      }
       this.failedBar.tick(documents.length);
       this.failedDocuments.push(...documents);
       const failJson = JSON.stringify(this.failedDocuments, null, 2);    
-      fs.writeFileSync(path.join(this.failedDirectory, 'recovery.json'), failJson);
+      fs.writeFileSync(path.join(this.failedDirectory, 'recovery-' + this.timestamp + '.json'), failJson);
     } catch(err) {
       console.error('Failed to backup failed documents', err);
     }
