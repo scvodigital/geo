@@ -122,8 +122,8 @@ module.exports = {
         "place": {{{stringify feature.attributes.place15nm}}},
         "population": {{feature.attributes.popcnt}},
         "region": {{{stringify feature.attributes.hlth12nm}}},
-        "textbag": {{{stringify feature.attributes.place15nm}}},
-        "autocomplete": {{{stringify feature.attributes.place15nm}}},
+        "textbag": {{{stringify (concat feature.attributes.place15nm " " feature.attributes.lad15nm)}}},
+        "autocomplete": {{{stringify (concat feature.attributes.place15nm " " feature.attributes.lad15nm)}}},
         "country": {{{stringify feature.attributes.ctry15nm}}},
         "point": {
           "lat": {{{stringify feature.attributes.lat}}},
