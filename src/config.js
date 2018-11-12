@@ -64,7 +64,7 @@ module.exports = {
         {{{stringify feature.attributes.lad18cd}}}: {{{stringify feature.attributes.lad18nm}}},
         {{{stringify feature.attributes.lad18nm}}}: {{{stringify feature.attributes.lad18cd}}}
       }`,
-      indexTemplate: `{
+      /*indexTemplate: `{
         "id": {{{stringify feature.attributes.lad18cd}}},
         "display": {{{stringify feature.attributes.lad18nm}}},
         "place": {{{stringify feature.attributes.lad18nm}}},
@@ -80,7 +80,7 @@ module.exports = {
           "lat": {{{stringify feature.attributes.lat}}},
           "lon": {{{stringify feature.attributes.long}}}
         },
-      }`
+      }`*/
     },
     {
       type: 'ward',
@@ -91,7 +91,7 @@ module.exports = {
         {{{stringify feature.attributes.wd17cd}}}: {{{stringify feature.attributes.wd17nm}}},
         {{{stringify feature.attributes.wd17nm}}}: {{{stringify feature.attributes.wd17cd}}}
       }`,
-      indexTemplate: `{
+      /*indexTemplate: `{
         "id": {{{stringify feature.attributes.wd17cd}}},
         "display": {{{stringify feature.attributes.wd17nm}}},
         "place": {{{stringify feature.attributes.wd17nm}}},
@@ -109,11 +109,11 @@ module.exports = {
           "lat": {{{stringify feature.attributes.lat}}},
           "lon": {{{stringify feature.attributes.long}}}
         }
-      }`,
+      }`,*/
     },
     {
       type: 'place',
-      dataUrl: 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/IPN_GB_2016/FeatureServer/0/query?where=descnm%20like%20%27%25LOC%25%27&outFields=place15cd,place15nm,ctyltnm,lad15cd,lad15nm,pcon15cd,pcon15nm,lat,long&returnGeometry=false&outSR=4326&f=json',
+      dataUrl: 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/IPN_GB_2016/FeatureServer/0/query?where=descnm%20like%20%27%25LOC%25%27&outFields=place15cd,place15nm,ctyltnm,ctry15nm,lad15cd,lad15nm,pcon15cd,pcon15nm,lat,long&returnGeometry=false&outSR=4326&f=json',
       dataType: 'geojson',
       paging: true,
       indexTemplate: `{
@@ -122,6 +122,7 @@ module.exports = {
         "place": {{{stringify feature.attributes.place15nm}}},
         "textbag": {{{stringify feature.attributes.place15nm}}},
         "autocomplete": {{{stringify feature.attributes.place15nm}}},
+        "country": {{{stringify feature.attributes.ctry15nm}}},
         "point": {
           "lat": {{{stringify feature.attributes.lat}}},
           "lon": {{{stringify feature.attributes.long}}}
