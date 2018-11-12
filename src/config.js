@@ -113,7 +113,7 @@ module.exports = {
     },
     {
       type: 'place',
-      dataUrl: 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/IPN_GB_2016/FeatureServer/0/query?where=descnm%20like%20%27%25LOC%25%27&outFields=place15cd,place15nm,ctyltnm,ctry15nm,lad15cd,lad15nm,pcon15cd,pcon15nm,lat,long&returnGeometry=false&outSR=4326&f=json',
+      dataUrl: 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/IPN_GB_2016/FeatureServer/0/query?where=descnm%20like%20%27%25LOC%25%27&outFields=place15cd,place15nm,popcnt,ctry15nm,hlth12nm,lad15cd,lad15nm,pcon15cd,pcon15nm,lat,long&returnGeometry=false&outSR=4326&f=json',
       dataType: 'geojson',
       paging: true,
       indexTemplate: `{
