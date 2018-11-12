@@ -17,7 +17,7 @@ module.exports = {
       dataType: 'recovery',
       path: './data/failed/recovery-2018-11-04-21-04-51.json'
     },*/
-    {  
+    {
       type: 'county-lookup',
       dataUrl: 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/WD16_LAD16_CTY16_OTH_UK_LU/FeatureServer/0/query?where=1%3D1&outFields=WD16CD,WD16NM,LAD16CD,LAD16NM,CTY16CD,CTY16NM&returnGeometry=false&outSR=4326&f=json',
       dataType: 'geojson',
@@ -118,15 +118,17 @@ module.exports = {
       paging: true,
       indexTemplate: `{
         "id": {{{stringify feature.attributes.place15cd}}},
-        "display": {{{stringify (concat feature.attributes.place15nm ", " feature.attributes.ctyltnm)}}},
+        "display": {{{stringify (concat feature.attributes.place15nm ", " feature.attributes.lad15nm)}}},
         "place": {{{stringify feature.attributes.place15nm}}},
+        "population": {{feature.attributes.popcnt}},
+        "region": {{{stringify feature.attributes.hlth12nm}}},
         "textbag": {{{stringify feature.attributes.place15nm}}},
         "autocomplete": {{{stringify feature.attributes.place15nm}}},
         "country": {{{stringify feature.attributes.ctry15nm}}},
         "point": {
           "lat": {{{stringify feature.attributes.lat}}},
           "lon": {{{stringify feature.attributes.long}}}
-        } 
+        }
       }`,
       mapsTemplate: `{
         "constituency": {
@@ -161,7 +163,7 @@ module.exports = {
         "point": {
           "lat": {{{stringify feature.attributes.lat}}},
           "lon": {{{stringify feature.attributes.long}}}
-        } 
+        }
       }`
     }*/
     /*
