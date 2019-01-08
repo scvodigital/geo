@@ -122,7 +122,7 @@ module.exports = {
         "place": {{{stringify feature.attributes.place15nm}}},
         "population": {{feature.attributes.popcnt}},
         "region": {{{stringify feature.attributes.hlth12nm}}},
-        "local_authority": {{{stringify feature.attributes.lad15nm}}},
+        "district": {{{stringify feature.attributes.lad15nm}}},
         "textbag": {{{stringify (concat feature.attributes.place15nm " " feature.attributes.lad15nm)}}},
         "autocomplete": {{{stringify (concat feature.attributes.place15nm " " feature.attributes.lad15nm)}}},
         "country": {{{stringify feature.attributes.ctry15nm}}},
@@ -140,9 +140,9 @@ module.exports = {
         }
       }`
     },
-/*{
+    {
       type: 'postcode',
-      dataUrl: 'https://ons-inspire.esriuk.com/arcgis/rest/services/Postcodes/ONS_Postcode_Directory_Latest_Centroids/MapServer/0/query?where=1%3D1&outFields=pcds,oslaua,osward,pcon,lat,long&returnGeometry=false&outSR=4326&f=json',
+      dataUrl: 'https://ons-inspire.esriuk.com/arcgis/rest/services/Postcodes/ONS_Postcode_Directory_Latest_Centroids/MapServer/0/query?where=1%3D1&outFields=pcds,oslaua,ctry,osward,pcon,lat,long&returnGeometry=false&outSR=4326&f=json',
       dataType: 'geojson',
       paging: true,
       indexTemplate: `{
@@ -155,6 +155,7 @@ module.exports = {
         "ward": {{{default (stringify (dot feature.attributes.osward maps.ward)) "null"}}},
         "constituency": {{{default (stringify (dot feature.attributes.pcon maps.place.constituency)) "null"}}},
         "nuts_3": {{{default (stringify (dot (concat feature.attributes.oslaua ".nuts3Name") maps.nuts-lookup.district)) "null"}}},
+        "country": "{{#compare feature.attributes.ctry "===" "S92000003"}}Scotland{{/compare}}",
         "region_codes": {
           "district": {{{stringify feature.attributes.oslaua}}},
           "ward": {{{stringify feature.attributes.osward}}},
@@ -166,7 +167,7 @@ module.exports = {
           "lon": {{{stringify feature.attributes.long}}}
         }
       }`
-    }*/
+    }
     /*
     {
       type: 'nhs-scotland',
