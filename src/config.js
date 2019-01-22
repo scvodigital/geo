@@ -118,7 +118,7 @@ module.exports = {
       paging: true,
       indexTemplate: `{
         "id": {{{stringify feature.attributes.place15cd}}},
-        "display": {{{stringify (concat feature.attributes.place15nm ", " feature.attributes.lad15nm)}}},
+        "display": {{{stringify (concat feature.attributes.place15nm (if (compare feature.attributes.place15nm "!==" (replace feature.attributes.lad15nm "City of " "")) (concat ", " (replace feature.attributes.lad15nm "City of " ""))))}}},
         "place": {{{stringify feature.attributes.place15nm}}},
         "population": {{feature.attributes.popcnt}},
         "region": {{{stringify feature.attributes.hlth12nm}}},
@@ -139,7 +139,8 @@ module.exports = {
           {{/ifAll}}
         }
       }`
-    },
+    }
+    /* * /
     {
       type: 'postcode',
       dataUrl: 'https://ons-inspire.esriuk.com/arcgis/rest/services/Postcodes/ONS_Postcode_Directory_Latest_Centroids/MapServer/0/query?where=1%3D1&outFields=pcds,oslaua,ctry,osward,pcon,lat,long&returnGeometry=false&outSR=4326&f=json',
