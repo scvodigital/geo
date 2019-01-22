@@ -118,7 +118,7 @@ module.exports = {
       paging: true,
       indexTemplate: `{
         "id": {{{stringify feature.attributes.place15cd}}},
-        "display": {{{stringify (concat feature.attributes.place15nm (if (compare feature.attributes.place15nm "!==" (replace feature.attributes.lad15nm "City of " "")) (concat ", " (replace feature.attributes.lad15nm "City of " ""))))}}},
+        "display": {{{stringify (concat feature.attributes.place15nm (if (compare feature.attributes.place15nm "!==" (replace (replace feature.attributes.lad15nm " City" "") "City of " "")) (concat ", " (replace (replace feature.attributes.lad15nm " City" "") "City of " ""))))}}},
         "place": {{{stringify feature.attributes.place15nm}}},
         "population": {{feature.attributes.popcnt}},
         "region": {{{stringify feature.attributes.hlth12nm}}},
