@@ -150,7 +150,7 @@ module.exports = {
         "id": {{{stringify feature.attributes.pcds}}},
         "display": {{{stringify (concat feature.attributes.pcds ", " (replace (replace (dot feature.attributes.oslaua maps.district) " City" "") "City of " ""))}}},
         "place": {{{stringify feature.attributes.pcds}}},
-        "textbag": {{{stringify (concat feature.attributes.pcds " " (replace " " "" feature.attributes.pcds))}}},
+        "textbag": {{{stringify (concat feature.attributes.pcds " " (replace feature.attributes.pcds " " ""))}}},
         "autocomplete": {{{stringify (replace feature.attributes.pcds " " "")}}},
         "district": {{{default (stringify (replace (replace (dot feature.attributes.oslaua maps.district)" City" "" )"City of " "" )) "null"}}},
         "ward": {{{default (stringify (dot feature.attributes.osward maps.ward)) "null"}}},
