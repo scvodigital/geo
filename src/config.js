@@ -17,6 +17,7 @@ module.exports = {
       dataType: 'recovery',
       path: './data/failed/recovery-2018-11-04-21-04-51.json'
     },*/
+    /* * /
     {
       type: 'county-lookup',
       dataUrl: 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/WD16_LAD16_CTY16_OTH_UK_LU/FeatureServer/0/query?where=1%3D1&outFields=WD16CD,WD16NM,LAD16CD,LAD16NM,CTY16CD,CTY16NM&returnGeometry=false&outSR=4326&f=json',
@@ -55,6 +56,7 @@ module.exports = {
         }
       }`
     },
+    /* * /
     {
       type: 'district',
       dataUrl: 'https://ons-inspire.esriuk.com/arcgis/rest/services/Administrative_Boundaries/Local_Authority_Districts_May_2018_Boundaries/MapServer/4/query?where=1%3D1&outFields=lad18cd,lad18nm,lat,long&returnGeometry=false&outSR=4326&f=json',
@@ -80,8 +82,9 @@ module.exports = {
           "lat": {{{stringify feature.attributes.lat}}},
           "lon": {{{stringify feature.attributes.long}}}
         },
-      }`*/
+      }`* /
     },
+    /* * /
     {
       type: 'ward',
       dataUrl: 'https://ons-inspire.esriuk.com/arcgis/rest/services/Administrative_Boundaries/Wards_December_2017_Boundaries/MapServer/3/query?where=1%3D1&outFields=wd17nm,long,lat,wd17cd&returnGeometry=false&outSR=4326&f=json',
@@ -109,8 +112,9 @@ module.exports = {
           "lat": {{{stringify feature.attributes.lat}}},
           "lon": {{{stringify feature.attributes.long}}}
         }
-      }`,*/
+      }`, * /
     },
+    /* * /
     {
       type: 'place',
       dataUrl: 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/IPN_GB_2016/FeatureServer/0/query?where=descnm%20like%20%27%25LOC%25%27&outFields=place15cd,place15nm,popcnt,ctry15nm,hlth12nm,lad15cd,lad15nm,pcon15cd,pcon15nm,lat,long&returnGeometry=false&outSR=4326&f=json',
@@ -140,7 +144,7 @@ module.exports = {
         }
       }`
     },
-    /* */
+    /* * /
     {
       type: 'postcode',
       dataUrl: 'https://ons-inspire.esriuk.com/arcgis/rest/services/Postcodes/ONS_Postcode_Directory_Latest_Centroids/MapServer/0/query?where=1%3D1&outFields=pcds,oslaua,ctry,osward,pcon,lat,long&returnGeometry=false&outSR=4326&f=json',
@@ -168,8 +172,8 @@ module.exports = {
           "lon": {{{stringify feature.attributes.long}}}
         }
       }`
-    }
-    /*
+    },
+    /* * /
     {
       type: 'nhs-scotland',
       dataUrl: 'http://sedsh127.sedsh.gov.uk/Atom_data/ScotGov/ZippedShapefiles/SG_NHS_HealthBoards_2018.zip',
@@ -187,6 +191,7 @@ module.exports = {
         "shape": {{{stringify feature.geometry}}}
       }`
     },
+    /* * /
     {
       type: 'district',
       dataUrl: 'https://opendata.arcgis.com/datasets/593018bf59ab4699b66355bd33cd186d_4.geojson',
@@ -214,7 +219,33 @@ module.exports = {
           "id": {{{stringify feature.properties.lad18cd}}}
         }
       }`
-    },
+    }
+    /* */
+    {
+      type: 'es_district',
+      dataUrl: 'https://vector.maps.elastic.co/files/uk_subdivisions_v1.geo.json?elastic_tile_service_tos=agree',
+      dataType: 'geojson',
+      geoJsonReduce: 0,
+      idProperty: 'id',
+      unkinkPolygon: false,
+      indexTemplate: `{
+        "id": {{{stringify feature.properties.id}}},
+        "display": {{{stringify feature.properties.label_en}}},
+        "place": {{{stringify feature.properties.label_en}}},
+        "textbag": {{{stringify feature.properties.label_en}}},
+        "autocomplete": {{{stringify feature.properties.label_en}}},
+        "shape": {{{stringify feature.geometry}}}
+      }`,
+      mapsTemplate: `{
+        {{{stringify feature.properties.id}}}: {
+          "place": {{{stringify feature.properties.label_en}}}
+        },
+        {{{stringify feature.properties.label_en}}}: {
+          "id": {{{stringify feature.properties.id}}}
+        }
+      }`
+    }
+    /* * /
     {
       type: 'nhs-england',
       dataUrl: 'https://opendata.arcgis.com/datasets/b9d40a5fcdc74124b2244d05705ae492_4.geojson',
