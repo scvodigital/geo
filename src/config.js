@@ -230,10 +230,10 @@ module.exports = {
       unkinkPolygon: false,
       indexTemplate: `{
         "id": {{{stringify feature.properties.id}}},
-        "display": {{{stringify feature.properties.label_en}}},
-        "place": {{{stringify feature.properties.label_en}}},
+        "display": {{{stringify (replace (replace (replace feature.properties.label_en " City" "") "City of " "") " and " " & "))}}},
+        "place": {{{stringify (replace (replace (replace feature.properties.label_en " City" "") "City of " "") " and " " & "))}}},
         "textbag": {{{stringify feature.properties.label_en}}},
-        "autocomplete": {{{stringify feature.properties.label_en}}},
+        "autocomplete": {{{stringify (replace (replace (replace feature.properties.label_en " City" "") "City of " "") " and " " & "))}}},
         "shape": {{{stringify feature.geometry}}}
       }`,
       mapsTemplate: `{
