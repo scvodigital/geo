@@ -19,21 +19,30 @@ const replacements = {
   place: {
     'Argyll and Bute': 'Argyll & Bute',
     'Dumfries and Galloway': 'Dumfries & Galloway',
+    'Perth and Kinross': 'Perth & Kinross',
     'Na h-Eileanan an Iar': 'Na h-Eileanan Siar',
+    'Outer Hebrides': 'Na h-Eileanan Siar',
+    'Western Isles': 'Na h-Eileanan Siar',
     'Shetland Islands': 'Shetland',
     'Orkney Islands': 'Orkney'
   },
   districtBorough: {
     'Argyll and Bute': 'Argyll & Bute',
     'Dumfries and Galloway': 'Dumfries & Galloway',
+    'Perth and Kinross': 'Perth & Kinross',
     'Na h-Eileanan an Iar': 'Na h-Eileanan Siar',
+    'Outer Hebrides': 'Na h-Eileanan Siar',
+    'Western Isles': 'Na h-Eileanan Siar',
     'Shetland Islands': 'Shetland',
     'Orkney Islands': 'Orkney'
   },
   countyUnitary: {
     'Argyll and Bute': 'Argyll & Bute',
     'Dumfries and Galloway': 'Dumfries & Galloway',
+    'Perth and Kinross': 'Perth & Kinross',
     'Na h-Eileanan an Iar': 'Na h-Eileanan Siar',
+    'Outer Hebrides': 'Na h-Eileanan Siar',
+    'Western Isles': 'Na h-Eileanan Siar',
     'Shetland Islands': 'Shetland',
     'Orkney Islands': 'Orkney'
   }
@@ -45,7 +54,7 @@ const progress = {
   totalIndexed: 0
 };
 function getTotalProgress() {
-  return '[file: ' + progress.currentFile + '/' + progress.totalFiles + 
+  return '[file: ' + progress.currentFile + '/' + progress.totalFiles +
       ', total: ' + progress.totalIndexed + ']:';
 }
 
@@ -96,13 +105,13 @@ async function doIndex(documents) {
 
   const bulkParams = {
     timeout: timeout,
-    body: [] 
+    body: []
   };
 
   try {
     for (const document of documents) {
       bulkParams.body.push(document.head);
-      bulkParams.body.push(document.body);      
+      bulkParams.body.push(document.body);
     }
   } catch (err) {
     console.error('Problem preparing bulk index body', err);
@@ -118,7 +127,7 @@ async function doIndex(documents) {
         const error = item.index.error;
         if (error && !error.caused_by.reason.startsWith('illegal lat')) {
           const id = item.index._id;
-          for (const document of documents) {            
+          for (const document of documents) {
             if (id === document.body.id) {
               document.reason = error;
               failed.push(document);
@@ -141,7 +150,7 @@ async function doIndex(documents) {
       document.reason = err;
       failedDocuments.push(document);
     }
-    
+
     allFailed.push(...failedDocuments);
 
     if (err.message.indexOf('Timeout') > -1) {
@@ -209,7 +218,7 @@ function getDocuments(places) {
     } else {
       suffix = place.countyUnitary;
     }
-   
+
     for (const placeName of placeNames) {
       const displayName = (placeName === suffix) ? placeName : placeName + ', ' + suffix;
       const id = s(displayName).slugify().s;
