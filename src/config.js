@@ -220,7 +220,7 @@ module.exports = {
         }
       }`
     }
-    /* */
+    /* * /
     {
       type: 'es_district',
       dataUrl: 'https://vector.maps.elastic.co/files/uk_subdivisions_v1.geo.json?elastic_tile_service_tos=agree',
@@ -235,7 +235,7 @@ module.exports = {
         "textbag": {{{stringify feature.properties.label_en}}},
         "autocomplete": {{{stringify (replace (replace (replace feature.properties.label_en " City" "") "City of " "") " and " " & "))}}},
         "shape": {{{stringify feature.geometry}}}
-      }`,*/
+      }`,* /
       mapsTemplate: `{
         {{{stringify feature.properties.id}}}: {
           "place": {{{stringify feature.properties.label_en}}}
