@@ -228,14 +228,14 @@ module.exports = {
       geoJsonReduce: 0,
       idProperty: 'id',
       unkinkPolygon: false,
-      indexTemplate: `{
+      /*indexTemplate: `{
         "id": {{{stringify feature.properties.id}}},
         "display": {{{stringify (replace (replace (replace feature.properties.label_en " City" "") "City of " "") " and " " & "))}}},
         "place": {{{stringify (replace (replace (replace feature.properties.label_en " City" "") "City of " "") " and " " & "))}}},
         "textbag": {{{stringify feature.properties.label_en}}},
         "autocomplete": {{{stringify (replace (replace (replace feature.properties.label_en " City" "") "City of " "") " and " " & "))}}},
         "shape": {{{stringify feature.geometry}}}
-      }`,
+      }`,*/
       mapsTemplate: `{
         {{{stringify feature.properties.id}}}: {
           "place": {{{stringify feature.properties.label_en}}}
