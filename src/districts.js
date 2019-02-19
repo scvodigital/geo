@@ -63,8 +63,8 @@ function getTotalProgress() {
         shape: feature.geometry
       }
     };
-  }); 
-  
+  });
+
   const pages = chunk(documents, 5);
   progress.totalPages = pages.length;
   let count = 0;
@@ -158,5 +158,5 @@ function delay(ms) {
 
 function placeNameTrimmer(name) {
   if (!name) return null;
-  return name.replace(/(^city\sof\s)|(\scity$)/ig, '');
+  return name.replace(/(^city\sof\s)|(\scity$)/ig, '').replace('Outer Hebrides', 'Na h-Eileanan Siar');
 }
