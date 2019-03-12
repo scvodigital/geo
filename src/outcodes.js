@@ -15,6 +15,12 @@ const client = new elastic.Client({
 });
 const allFailed = [];
 
+const countryIdentifiers = {
+  Scotland: /^(TD|DG|KA|ML|EH|G|KY|DD|FK|PA|PH|AB|IV|KW|HS|ZE)(\d+)$/ig,
+  Wales: /^(LL|SY|LD|SA|NP|CF)(\d+)$/ig,
+  England: /.*/ig
+}
+
 const progress = {
   totalPages: 0,
   totalPlaces: 0,
@@ -34,12 +40,17 @@ function getTotalProgress() {
 
   let documents = data.map((place) => {
     const postcodesActive = Number(place['Active postcodes']);
-
+    const outcode = place.Postcode;
+    
     if (!place.Latitude || postcodesActive === 0) return null;
 
-    const district = placeNameTrimmer(place.Region);
-    const outcode = place.Postcode;
-    const name = outcode + ', ' + district;
+    let country = '';
+    for (const [where, regex] of Object.entries(countryIdentifiers)) {
+      if (regex.test(outcode)) {
+        country = where;
+        break;
+      }
+    }
 
     return {
       head: {
@@ -52,12 +63,12 @@ function getTotalProgress() {
       body: {
         Id: outcode,
         place: outcode,
-        display: name,
+        display: outcode,
         autocomplete: outcode,
         textbag: outcode,
         localType: "Outcode",
-        district: district,
         postcodesActive: postcodesActive,
+        country: country,
         point: {
           lat: place.Latitude,
           lon: place.Longitude
