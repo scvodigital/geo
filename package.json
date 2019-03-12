@@ -7,7 +7,8 @@
     "start": "node --inspect src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "places": "node src/places.js",
-    "districts": "node src/districts.js"
+    "districts": "node src/districts.js",
+    "outcodes": "node src/outcodes.js"
   },
   "repository": {
     "type": "git",
