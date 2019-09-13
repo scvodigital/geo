@@ -17,7 +17,7 @@ module.exports = {
       dataType: 'recovery',
       path: './data/failed/recovery-2018-11-04-21-04-51.json'
     },*/
-    /* * /
+    /* */
     {
       type: 'county-lookup',
       dataUrl: 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/WD16_LAD16_CTY16_OTH_UK_LU/FeatureServer/0/query?where=1%3D1&outFields=WD16CD,WD16NM,LAD16CD,LAD16NM,CTY16CD,CTY16NM&returnGeometry=false&outSR=4326&f=json',
@@ -41,6 +41,7 @@ module.exports = {
         }
       }`
     },
+    /* */
     {
       type: 'nuts-lookup',
       dataUrl: 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/LAD16_LAU118_NUTS318_NUTS218_NUTS118_UK_LUv2/FeatureServer/0/query?where=1%3D1&outFields=LAD16CD,LAD16NM,NUTS318CD,NUTS318NM&outSR=4326&f=json',
@@ -56,7 +57,7 @@ module.exports = {
         }
       }`
     },
-    /* * /
+    /* */
     {
       type: 'district',
       dataUrl: 'https://ons-inspire.esriuk.com/arcgis/rest/services/Administrative_Boundaries/Local_Authority_Districts_May_2018_Boundaries/MapServer/4/query?where=1%3D1&outFields=lad18cd,lad18nm,lat,long&returnGeometry=false&outSR=4326&f=json',
@@ -82,9 +83,9 @@ module.exports = {
           "lat": {{{stringify feature.attributes.lat}}},
           "lon": {{{stringify feature.attributes.long}}}
         },
-      }`* /
+      }`*/
     },
-    /* * /
+    /* */
     {
       type: 'ward',
       dataUrl: 'https://ons-inspire.esriuk.com/arcgis/rest/services/Administrative_Boundaries/Wards_December_2017_Boundaries/MapServer/3/query?where=1%3D1&outFields=wd17nm,long,lat,wd17cd&returnGeometry=false&outSR=4326&f=json',
@@ -112,7 +113,7 @@ module.exports = {
           "lat": {{{stringify feature.attributes.lat}}},
           "lon": {{{stringify feature.attributes.long}}}
         }
-      }`, * /
+      }`, */
     },
     /* * /
     {
@@ -156,7 +157,7 @@ module.exports = {
         "place": {{{stringify feature.attributes.pcds}}},
         "textbag": {{{stringify (concat feature.attributes.pcds " " (replace feature.attributes.pcds " " ""))}}},
         "autocomplete": {{{stringify (replace feature.attributes.pcds " " "")}}},
-        "district": {{{default (stringify (replace (replace (dot feature.attributes.oslaua maps.district)" City" "" )"City of " "" )) "null"}}},
+        "district": {{{default (stringify (replace (replace (dot feature.attributes.oslaua maps.district) " City" "" ) "City of " "" )) "null"}}},
         "ward": {{{default (stringify (dot feature.attributes.osward maps.ward)) "null"}}},
         "constituency": {{{default (stringify (dot feature.attributes.pcon maps.place.constituency)) "null"}}},
         "nuts_3": {{{default (stringify (dot (concat feature.attributes.oslaua ".nuts3Name") maps.nuts-lookup.district)) "null"}}},
@@ -191,7 +192,7 @@ module.exports = {
         "shape": {{{stringify feature.geometry}}}
       }`
     },
-    /* * /
+    /* */
     {
       type: 'district',
       dataUrl: 'https://opendata.arcgis.com/datasets/593018bf59ab4699b66355bd33cd186d_4.geojson',
