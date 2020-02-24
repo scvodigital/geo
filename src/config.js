@@ -159,7 +159,7 @@ module.exports = {
         "autocomplete": {{{stringify (replace feature.attributes.pcds " " "")}}},
         "district": {{{default (stringify (replace (replace (dot feature.attributes.oslaua maps.district) " City" "" ) "City of " "" )) "null"}}},
         "ward": {{{default (stringify (dot feature.attributes.osward maps.ward)) "null"}}},
-        "constituency": {{{default (stringify (dot feature.attributes.pcon maps.constituency)) "null"}}},
+        "constituency": {{{default (stringify (dot feature.attributes.pcon maps.place.constituency)) "null"}}},
         "nuts_3": {{{default (stringify (dot (concat feature.attributes.oslaua ".nuts3Name") maps.nuts-lookup.district)) "null"}}},
         "country": "{{#compare feature.attributes.ctry "===" "S92000003"}}Scotland{{/compare}}",
         "region_codes": {
