@@ -87,6 +87,16 @@ module.exports = {
     },
     /* */
     {
+      type: 'constituency',
+      dataUrl: 'https://opendata.arcgis.com/datasets/1957697792a24de8a561215c26b57d12_0.geojson',
+      dataType: 'geojson',
+      paging: true,
+      mapsTemplate: `{
+        {{{stringify feature.attributes.pcon18cd}}}: {{{stringify feature.attributes.pcon18nm}}},
+        {{{stringify feature.attributes.pcon18nm}}}: {{{stringify feature.attributes.pcon18cd}}}
+      }`
+    },
+    {
       type: 'ward',
       dataUrl: 'https://ons-inspire.esriuk.com/arcgis/rest/services/Administrative_Boundaries/Wards_December_2017_Boundaries/MapServer/3/query?where=1%3D1&outFields=wd17nm,long,lat,wd17cd&returnGeometry=false&outSR=4326&f=json',
       dataType: 'geojson',
@@ -159,7 +169,7 @@ module.exports = {
         "autocomplete": {{{stringify (replace feature.attributes.pcds " " "")}}},
         "district": {{{default (stringify (replace (replace (dot feature.attributes.oslaua maps.district) " City" "" ) "City of " "" )) "null"}}},
         "ward": {{{default (stringify (dot feature.attributes.osward maps.ward)) "null"}}},
-        "constituency": {{{default (stringify (dot feature.attributes.pcon maps.place.constituency)) "null"}}},
+        "constituency": {{{default (stringify (dot feature.attributes.pcon maps.constituency)) "null"}}},
         "nuts_3": {{{default (stringify (dot (concat feature.attributes.oslaua ".nuts3Name") maps.nuts-lookup.district)) "null"}}},
         "country": "{{#compare feature.attributes.ctry "===" "S92000003"}}Scotland{{/compare}}",
         "region_codes": {
