@@ -85,17 +85,18 @@ module.exports = {
         },
       }`*/
     },
-    /* */
+    /* * /
     {
       type: 'constituency',
-      dataUrl: 'https://opendata.arcgis.com/datasets/1957697792a24de8a561215c26b57d12_0.geojson',
+      dataUrl: 'https://ons-inspire.esriuk.com/arcgis/rest/services/Electoral_Boundaries/UK_Westminster_Parliamentary_Consituencies_December_2016_Boundaries/MapServer/4/query?where=1%3D1&outFields=pcon16cd,pcon16nm,lat,long&returnGeometry=false&outSR=4326&f=json',
       dataType: 'geojson',
       paging: true,
       mapsTemplate: `{
-        {{{stringify feature.attributes.pcon18cd}}}: {{{stringify feature.attributes.pcon18nm}}},
-        {{{stringify feature.attributes.pcon18nm}}}: {{{stringify feature.attributes.pcon18cd}}}
+        {{{stringify features.attributes.pcon16cd}}}: {{{stringify features.attributes.pcon16nm}}},
+        {{{stringify features.attributes.pcon16nm}}}: {{{stringify features.attributes.pcon16cd}}}
       }`
     },
+    /* */
     {
       type: 'ward',
       dataUrl: 'https://ons-inspire.esriuk.com/arcgis/rest/services/Administrative_Boundaries/Wards_December_2017_Boundaries/MapServer/3/query?where=1%3D1&outFields=wd17nm,long,lat,wd17cd&returnGeometry=false&outSR=4326&f=json',

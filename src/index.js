@@ -70,7 +70,7 @@ async function processJobs() {
 
   for (const job of CONFIG.jobs) {
     switch (job.dataType) {
-      case ('geojson'): 
+      case ('geojson'):
         await processGeoJsonJob(job);
         break;
       case ('csv'):
@@ -99,13 +99,13 @@ async function processRecoveryJob(job) {
 
   masterProgressBar.tick();
   const chunks = chunksOfSize(recoveryDocuments, CONFIG.indexPageSize);
-  
+
   for (const chunk of chunks) {
     if (Array.isArray(chunk) && chunk.length > 0) {
       await indexer.indexDocuments(chunk);
     }
-  } 
- 
+  }
+
 }
 
 async function processGeoJsonJob(job) {
@@ -143,11 +143,11 @@ async function processGeoJsonJob(job) {
     }
 
     masterProgressBar.tick();
-    
+
     if (!geoJson || !Array.isArray(geoJson.features) || geoJson.features.length === 0) {
       break;
     }
-    
+
     if (job.geoJsonReduce) {
       geoJson = reduce(geoJson, job);
     }
@@ -155,7 +155,7 @@ async function processGeoJsonJob(job) {
     if (job.unkinkPolygon) {
       geoJson = unkinkPolygon(geoJson, job);
     }
-    
+
     const documents = [];
     for (const feature of geoJson.features) {
       if (indexTemplate && onlyIndex.indexOf(job.type) > -1) {
@@ -173,9 +173,9 @@ async function processGeoJsonJob(job) {
         if (Array.isArray(chunk) && chunk.length > 0) {
           await indexer.indexDocuments(chunk);
         }
-      } 
+      }
     }
-    
+
     offset += geoJson.features.length;
 
     if (!geoJson.exceededTransferLimit) {
@@ -188,7 +188,7 @@ function processCsvJob(job) {
   return new Promise((resolve, reject) => {
     const indexTemplate = job.indexTemplate ? hbs.compile(job.indexTemplate) : null;
     const mapsTemplate = job.mapsTemplate ? hbs.compile(job.mapsTemplate) : null;
-  
+
     const request = r(job.dataUrl)
       .pipe(new StringStream())
       .CSVParse({
@@ -228,7 +228,7 @@ function processZippedShapefileJob(job) {
       encoding: null
     });
     const buff = Buffer.from(res, 'utf8');
-    
+
     masterProgressBar.tick();
 
     const stream = new Duplex();
@@ -259,7 +259,7 @@ function processZippedShapefileJob(job) {
       if (job.unkinkPolygon) {
         geoJson = unkinkPolygon(geoJson, job);
       }
-      
+
       for (const feature of geoJson.features) {
         if (indexTemplate && onlyIndex.indexOf(job.type) > -1) {
           const document = getDocument(indexTemplate, feature, job);
@@ -313,7 +313,7 @@ function updateMaps(mapsTemplate, feature, job) {
 function unkinkPolygon(featureCollection, job) {
   try {
     featureCollection = turf.unkinkPolygon(featureCollection);
-    
+
     const featuresMap = {};
     for (const feature of featureCollection.features) {
       const id = feature.properties[job.idProperty];
@@ -356,7 +356,7 @@ function fixPolygons(geoJson, job) {
     for (const feature of geoJson.features) {
       if (feature.geometry.type == 'MultiPolygon' || feature.geometry.type == 'Polygon') {
         feature.coordinates = fixCoordArray(feature.geometry.coordinates, job);
-      } 
+      }
     }
   } catch (err) {
     console.error('Failed to fix polygons', err, job);
@@ -382,7 +382,7 @@ function fixCoordArray(array) {
     }
 
     array.push(array[0]);
-  } else { 
+  } else {
     if (Array.isArray(array)) {
       for (let i = 0; i < array.length; i++) {
         array[i] = fixCoordArray(array[i]);
@@ -398,7 +398,7 @@ function fixCoordArray(array) {
 }
 
 function isCoordsArray(array) {
-  return Array.isArray(array) && 
+  return Array.isArray(array) &&
     array.length > 0 &&
     Array.isArray(array[0]) &&
     array[0].length === 2 &&
@@ -408,7 +408,7 @@ function isCoordsArray(array) {
 
 async function main() {
   try {
-    console.log('Job started at:', dateFns.format('YYYY-MM-DD HH:mm:ss')); 
+    console.log('Job started at:', dateFns.format('YYYY-MM-DD HH:mm:ss'));
 
     await indexer.setup();
     indexer.startIndexer();
