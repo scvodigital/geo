@@ -85,6 +85,17 @@ module.exports = {
         },
       }`*/
     },
+    /* * /
+    {
+      type: 'constituency',
+      dataUrl: 'https://ons-inspire.esriuk.com/arcgis/rest/services/Electoral_Boundaries/UK_Westminster_Parliamentary_Consituencies_December_2016_Boundaries/MapServer/4/query?where=1%3D1&outFields=pcon16cd,pcon16nm,lat,long&returnGeometry=false&outSR=4326&f=json',
+      dataType: 'geojson',
+      paging: true,
+      mapsTemplate: `{
+        {{{stringify features.attributes.pcon16cd}}}: {{{stringify features.attributes.pcon16nm}}},
+        {{{stringify features.attributes.pcon16nm}}}: {{{stringify features.attributes.pcon16cd}}}
+      }`
+    },
     /* */
     {
       type: 'ward',
@@ -159,7 +170,7 @@ module.exports = {
         "autocomplete": {{{stringify (replace feature.attributes.pcds " " "")}}},
         "district": {{{default (stringify (replace (replace (dot feature.attributes.oslaua maps.district) " City" "" ) "City of " "" )) "null"}}},
         "ward": {{{default (stringify (dot feature.attributes.osward maps.ward)) "null"}}},
-        "constituency": {{{default (stringify (dot feature.attributes.pcon maps.place.constituency)) "null"}}},
+        "constituency": {{{default (stringify (dot feature.attributes.pcon maps.constituency)) "null"}}},
         "nuts_3": {{{default (stringify (dot (concat feature.attributes.oslaua ".nuts3Name") maps.nuts-lookup.district)) "null"}}},
         "country": "{{#compare feature.attributes.ctry "===" "S92000003"}}Scotland{{/compare}}",
         "region_codes": {
