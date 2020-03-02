@@ -85,15 +85,15 @@ module.exports = {
         },
       }`*/
     },
-    /* * /
+    /* */
     {
       type: 'constituency',
       dataUrl: 'https://ons-inspire.esriuk.com/arcgis/rest/services/Electoral_Boundaries/UK_Westminster_Parliamentary_Consituencies_December_2016_Boundaries/MapServer/4/query?where=1%3D1&outFields=pcon16cd,pcon16nm,lat,long&returnGeometry=false&outSR=4326&f=json',
       dataType: 'geojson',
       paging: true,
       mapsTemplate: `{
-        {{{stringify features.attributes.pcon16cd}}}: {{{stringify features.attributes.pcon16nm}}},
-        {{{stringify features.attributes.pcon16nm}}}: {{{stringify features.attributes.pcon16cd}}}
+        {{{stringify feature.attributes.pcon16cd}}}: {{{stringify feature.attributes.pcon16nm}}},
+        {{{stringify feature.attributes.pcon16nm}}}: {{{stringify feature.attributes.pcon16cd}}}
       }`
     },
     /* */
